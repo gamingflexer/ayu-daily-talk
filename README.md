@@ -2,7 +2,7 @@
 
 An installable web app (PWA) in which a pregnant woman or new mother has a **5-minute health talk with Ayu every day**. Ayu asks doctor-style questions, shows tap-to-answer cards while it talks, falls back to an ordinary phone call when the network is weak, and turns the talks into her journey: tests, medicines, a birth and travel plan, and a 2-minute summary for her doctor.
 
-This repo is a **public demo for research (UNICEF FemTech challenge)**. It contains the 13 core screens, 3 sample flows and the ASHA screen from our Figma design, plus **working code for a live voice/video talk through the Google Gemini Live API**.
+This repo is an **open-source (MIT) public demo for research (UNICEF FemTech challenge)**. It contains the 13 core screens, 3 sample flows and the ASHA screen from our Figma design, plus **working code for a live voice/video talk through the Google Gemini Live API**.
 
 > **Mock data only — no real patients.** Every name, number, village and reading is made up. The rules and wording have not been clinically reviewed; this is not a medical device and must not be used for care.
 
@@ -158,4 +158,4 @@ docs/screenshots/  screenshots at 360 px
 - **Font:** [Inter](https://rsms.me/inter/) (SIL Open Font License), one self-hosted variable woff2 file (Latin subset). Hindi text uses the phone’s own Devanagari font.
 - **Pictures:** the woman on the call screens and the pick-the-picture tiles are illustrations; no real person is shown. Licensed real photos (medicine strip, skin, swelling, stool colours) will replace the tiles, each with a credit here.
 - **Hindi:** a draft translation that needs review by a native speaker. Reviewer notes are in English only.
-- **Licence:** none yet, so all rights are reserved by default. Ask before reusing the code.
+- **Licence:** the code is open source under the [MIT licence](LICENSE). The Ayu name and the heart + “Ayu” + ™ mark are not covered by it and stay trademarks of Ayu.

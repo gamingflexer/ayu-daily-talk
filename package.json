@@ -33,9 +33,10 @@
     "vite-plugin-pwa": "^2.0.0",
     "workbox-window": "^7.4.1"
   },
-  "description": "Ayu's daily 5-minute pregnancy talk — installable PWA demo with Gemini Live voice/video call code. Mock data only.",
+  "description": "Ayu's daily 5-minute pregnancy talk \u2014 installable PWA demo with Gemini Live voice/video call code. Mock data only.",
   "engines": {
     "node": ">=20"
   },
-  "packageManager": "pnpm@8.8.0"
+  "packageManager": "pnpm@8.8.0",
+  "license": "MIT"
 }
