@@ -1,0 +1,41 @@
+{
+  "name": "ayu-daily-talk",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n web,api -c magenta,cyan \"vite\" \"node --watch-path=server --watch-path=shared server/index.js\"",
+    "dev:web": "vite",
+    "server": "node server/index.js",
+    "build": "vite build",
+    "build:pages": "PAGES_BASE=/ayu-daily-talk/ vite build",
+    "preview": "vite preview",
+    "start": "NODE_ENV=production node server/index.js",
+    "icons": "node scripts/make-icons.mjs",
+    "test": "node --test test/*.test.js",
+    "lint": "oxlint",
+    "scan": "gitleaks git --redact --no-banner -v ."
+  },
+  "dependencies": {
+    "@google/genai": "^3.2.0",
+    "express": "^5.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "concurrently": "^10.0.7",
+    "oxlint": "^1.90.0",
+    "sharp": "^0.35.5",
+    "vite": "^8.3.6",
+    "vite-plugin-pwa": "^2.0.0",
+    "workbox-window": "^7.4.1"
+  },
+  "description": "Ayu's daily 5-minute pregnancy talk — installable PWA demo with Gemini Live voice/video call code. Mock data only.",
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@8.8.0"
+}

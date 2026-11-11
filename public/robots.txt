@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://gamingflexer.github.io/ayu-daily-talk/sitemap.xml
