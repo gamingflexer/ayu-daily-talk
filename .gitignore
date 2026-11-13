@@ -31,3 +31,5 @@ dist-ssr
 
 # local test audio for headless browser checks
 public/*.wav
+.vercel
+.env*
