@@ -91,6 +91,52 @@ export function createMockTalk({ persona, lang = 'en', t, speak = true }) {
     return new Promise((resolve) => pending.set(out.card.id, { card: out.card, resolve }));
   }
 
+  /** Demo 1 — pregnant, week 34 (Flow B): puffy feet + a headache → the fixed rules say see a doctor today. */
+  async function swellingHeadacheScript() {
+    await say('mock.greet');
+    await her('mock.herHeadache');
+    await say('mock.qSwelling');
+    const { answer: a } = await tool('ask_yes_no', {
+      question: t('mock.qSwelling'),
+      not_sure_action: 'camera',
+      picture_set: 'feet_swelling',
+      sign: 'swelling_feet',
+      explain: t('mock.explainSwelling'),
+    });
+    if (stopped) return;
+    await think();
+    await say(a === 'yes' ? 'mock.ackNoted' : 'mock.ackThanks');
+    await say('mock.qHeadache');
+    await tool('ask_yes_no', { question: t('mock.qHeadache'), sign: 'severe_headache', not_sure_action: 'none', explain: t('mock.explainHeadache') });
+    if (stopped) return;
+    await finish(null);
+  }
+
+  /** Demo 2 — grandma, 68, metformin since 5 days: stomach question with picture answers; red flags still apply. */
+  async function metforminScript() {
+    await say('mock.elGreet');
+    await say('mock.elQStomach');
+    const { meta } = await tool('ask_single_choice', {
+      question: t('mock.elQStomach'),
+      picture_set: 'stomach_upset',
+      options: [t('pictures.stomach_upset.upset'), t('pictures.stomach_upset.vomiting'), t('pictures.stomach_upset.fine')],
+      explain: t('mock.explainStomach'),
+    });
+    if (stopped) return;
+    if (meta?.picture === 'upset') tool('record_symptom', { sign: 'other', her_words: t('pictures.stomach_upset.upset'), since: '5 days', severity: 'mild' });
+    await think();
+    await say('mock.elQThirst');
+    await tool('ask_yes_no', { question: t('mock.elQThirst'), sign: 'dehydration', not_sure_action: 'none', explain: t('mock.explainThirst') });
+    if (stopped) return;
+    tool('red_flag_check', {});
+    await wait(1400);
+    if (stopped) return;
+    const lvl = referral(state).level;
+    await say(lvl === 'none' || lvl === 'watch' ? 'mock.elFine' : lvl === 'emergency' ? 'mock.emergency' : 'mock.elSeeToday');
+    await say('mock.allDone');
+    if (!state.finished) tool('finish_talk', {});
+  }
+
   async function pregnantScript() {
     // Voice only: greeting and "how are you".
     await say('mock.greet');
@@ -261,7 +307,9 @@ export function createMockTalk({ persona, lang = 'en', t, speak = true }) {
       emit({ type: 'status', status: 'live' });
       micStop = meterMic(stream, (rms) => emit({ type: 'level', rms: paused ? 0 : rms }));
       if (!micStop) micMeter = setInterval(() => emit({ type: 'level', rms: paused ? 0 : Math.random() * 0.05 }), 200);
-      (persona.stage === 'postnatal' ? postnatalScript() : pregnantScript()).catch((e) =>
+      // The two demo cases have short scripts of their own; the other personas get the full talk.
+      const script = persona.id === 'reena' ? swellingHeadacheScript : persona.id === 'shanti' ? metforminScript : persona.stage === 'postnatal' ? postnatalScript : pregnantScript;
+      script().catch((e) =>
         emit({ type: 'status', status: 'error', detail: e.message }),
       );
     },

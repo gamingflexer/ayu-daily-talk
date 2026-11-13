@@ -10,7 +10,7 @@ import { watchNetwork } from '../live/network.js';
 import { beginTalkMedia, takeTalkMedia, openCamera, stopStream } from '../live/media.js';
 import { cardQueue } from '../live/tool-flow.js';
 import { nextPhase } from '../live/phase.js';
-import { createTalkState, handleTool, recordAnswer, snapshotTalk, cameraPurposeFor } from '../../shared/talk-state.js';
+import { createTalkState, handleTool, recordAnswer, snapshotTalk, cameraPurposeFor, CAMERA_SETS } from '../../shared/talk-state.js';
 import { PhotoView } from './Photo.jsx';
 
 const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -186,7 +186,7 @@ export function TalkScreen({ demo, forceMock, net, drop }) {
       setPhoto({ purpose: card.purpose, cardId: card.id });
       return;
     }
-    if (card.pictureSet && !live.current.back) switchToBack(cameraPurposeFor(card), { tell: true });
+    if (CAMERA_SETS.has(card.pictureSet) && !live.current.back) switchToBack(cameraPurposeFor(card), { tell: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card?.id]);
 
@@ -402,7 +402,7 @@ export function TalkScreen({ demo, forceMock, net, drop }) {
       engineRef.current?.setCamera(null);
       return;
     }
-    if (camTurn || card?.pictureSet) return switchToBack(cameraPurposeFor(card));
+    if (camTurn || CAMERA_SETS.has(card?.pictureSet)) return switchToBack(cameraPurposeFor(card));
     setCamState('starting');
     try {
       const s = await openCamera('user');
@@ -471,7 +471,11 @@ export function TalkScreen({ demo, forceMock, net, drop }) {
   const postnatal = persona.stage === 'postnatal';
   const pill = postnatal
     ? t('call.pillPostnatal', { days: persona.daysAfterBirth, time: fmt(secs) })
-    : t('call.pill', { weeks: persona.weeks, time: fmt(secs) });
+    : persona.stage === 'elder'
+      ? t('call.pillElder', { time: fmt(secs) })
+      : t('call.pill', { weeks: persona.weeks, time: fmt(secs) });
+  // What Ayu already knows (a new medicine), shown on the call so she sees why Ayu asks.
+  const knows = persona.medicines?.some((m) => m.isNew) ? t('call.knows', { what: t(`p.${persona.id}.knows`) }) : null;
   const modeTag = mode === 'gemini' ? t('call.liveMode') : mode === 'mock' ? t('call.mockMode') : null;
   const stream = back || front;
   const shownCard = editing || card;
@@ -492,7 +496,8 @@ export function TalkScreen({ demo, forceMock, net, drop }) {
           caption={showCaption}
           illustration={Boolean(demo)}
           camState={needsStart ? 'idle' : camState}
-          onCamera={needsStart ? null : camState === 'blocked' && (card?.pictureSet || camTurn) ? () => switchToBack(cameraPurposeFor(card)) : toggleCamera}
+          onCamera={needsStart ? null : camState === 'blocked' && (CAMERA_SETS.has(card?.pictureSet) || camTurn) ? () => switchToBack(cameraPurposeFor(card)) : toggleCamera}
+          knows={needsStart || done ? null : knows}
           status={demo || needsStart || done ? null : <StateChip phase={phase} outLevel={outLevel} micLevel={micLevel} paused={paused} />}
         />
 

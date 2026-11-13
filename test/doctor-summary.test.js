@@ -34,7 +34,7 @@ test('her own words are kept verbatim; picture picks and camera are named', () =
   const { p, snap } = sunitaTalk();
   const { text } = buildDoctorSummary({ persona: p, talk: snap });
   assert.match(text, /“सिर में दर्द है सुबह से” \(since morning, moderate\)/);
-  assert.match(text, /picked picture: Very swollen — a dent stays/);
+  assert.match(text, /picked picture: A dent stays when pressed/);
   assert.match(text, /Showed on camera: feet \(not stored\)/);
   assert.match(text, /Bag and documents: MCP card, clothes/);
   assert.match(text, /Is my BP okay\?/);

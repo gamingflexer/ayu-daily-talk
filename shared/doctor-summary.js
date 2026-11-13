@@ -74,7 +74,7 @@ function answerLine(a) {
  *   lines are "mark|text" items (warn / dot / done) for the Checklist.
  */
 export function buildDoctorSummary({ persona: p, talk, now = Date.now() }) {
-  const title = p.stage === 'postnatal' ? `${p.name}, ${p.age} · day ${p.daysAfterBirth} after birth` : `${p.name}, ${p.age} · ${p.weeks} weeks`;
+  const title = p.stage === 'postnatal' ? `${p.name}, ${p.age} · day ${p.daysAfterBirth} after birth` : p.stage === 'elder' ? `${p.name}, ${p.age} · ${(p.conditions || []).join('; ') || 'not pregnant'}` : `${p.name}, ${p.age} · ${p.weeks} weeks`;
   const subtitle = [p.stage === 'pregnant' ? `pregnancy ${p.pregnancy}` : null, `${p.village}, ${p.district}`, `ASHA ${p.asha}`]
     .filter(Boolean)
     .join(' · ');
@@ -119,7 +119,7 @@ export function buildDoctorSummary({ persona: p, talk, now = Date.now() }) {
     bg.push(`${last.sys >= 140 || last.dia >= 90 ? 'warn' : 'dot'}|BP ${first.sys}/${first.dia} (${first.label}) → ${last.sys}/${last.dia} (${last.label}), ${p.bp.length} readings`);
   }
   if (p.hb) bg.push(`${p.hb.value < 11 ? 'warn' : 'dot'}|Hb ${p.hb.value} g/dL at week ${p.hb.week}`);
-  for (const m of p.medicines || []) bg.push(`dot|${m.name}: taken ${m.takenLast7}/7 days${m.note ? ` — ${m.note}` : ''}`);
+  for (const m of p.medicines || []) bg.push(`${m.isNew ? 'warn' : 'dot'}|${m.name}${m.isNew ? ` (NEW, started ${m.startedDaysAgo} days ago)` : ''}: taken ${m.takenLast7}/7 days${m.note ? ` — ${m.note}` : ''}`);
   push('record', 'Her record', bg);
 
   // 4. Plan changed today, and her questions.

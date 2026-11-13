@@ -139,7 +139,7 @@ export function ShareDoctorScreen({ openMenu }) {
       <Header name={p.name} onSwitch={openMenu} onProfile={openMenu} />
       <div className="body">
         <Eyebrow>{t('s13.eyebrow')}</Eyebrow>
-        <h1 className="h1">{p.stage === 'postnatal' ? t('s13.headingPostnatal', { name: p.name, days: p.daysAfterBirth }) : t('s13.heading', { name: p.name, weeks: p.weeks })}</h1>
+        <h1 className="h1">{p.stage === 'postnatal' ? t('s13.headingPostnatal', { name: p.name, days: p.daysAfterBirth }) : p.stage === 'elder' ? t('s13.headingElder', { name: p.name, age: p.age }) : t('s13.heading', { name: p.name, weeks: p.weeks })}</h1>
         <Card tone="summary">
           {bp.length > 1 && (
             <>

@@ -20,6 +20,13 @@ const QUESTIONS = {
     { key: 's8.q3', sign: 'severe_headache' },
     { key: 's8.q4', sign: 'swelling_face_hands' },
   ],
+  // Not pregnant, on a new medicine (metformin): its side-effect danger signs.
+  elder: [
+    { key: 's8.elQ1' },
+    { key: 's8.elQ2', sign: 'vomiting_no_food' },
+    { key: 's8.elQ3', sign: 'dehydration' },
+    { key: 's8.elQ4', sign: 'severe_abdominal_pain' },
+  ],
   postnatal: [
     { key: 's8.q1' },
     { key: 's8.pnQ2', signOnNo: 'baby_poor_feeding' },
@@ -44,7 +51,7 @@ export function PhoneScreen({ fromTalk = false }) {
   }, []);
   // One talk state for the whole call (mutable, like the engines' state).
   const [talkState] = useState(() => restoreTalkState(persona, fromTalk && lastTalk?.partial ? lastTalk : null));
-  const questions = QUESTIONS[persona.stage === 'postnatal' ? 'postnatal' : 'pregnant'];
+  const questions = QUESTIONS[persona.stage] || QUESTIONS.pregnant;
   const continued = fromTalk && lastTalk?.partial && lastTalk.persona === persona.id;
 
   useEffect(() => {

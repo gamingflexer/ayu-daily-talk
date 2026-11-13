@@ -1660,3 +1660,36 @@ html[data-script='indic'] .eyebrow {
 .card-sheet.compact {
   max-height: 74%;
 }
+/* "Ayu knows: new sugar tablet (metformin) since 5 days" */
+.knows-strip {
+  position: absolute;
+  top: 102px;
+  left: 16px;
+  right: 16px;
+  padding: 9px 14px;
+  border-radius: 14px;
+  background: rgba(229, 244, 236, 0.95);
+  color: #1d6b45;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 19px;
+}
+.demo-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px var(--pad);
+  background: var(--coral-wash);
+  font-size: 14px;
+  font-weight: 600;
+}
+.demo-bar .chip {
+  padding: 9px 14px;
+  font-size: 14px;
+  background: #fff;
+}
+.demo-bar .chip.on {
+  background: var(--ink);
+  color: #fff;
+}

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Screen, Logo, Button, Chip, Card } from '../components/ui.jsx';
 import { useT, LANG_LABELS, LANG_ORDER } from '../i18n/index.jsx';
 import { Spinner } from '../components/call.jsx';
+import { DemoBar } from '../components/demo.jsx';
 import { useApp } from '../state.jsx';
 import { go, href } from '../router.js';
 
@@ -24,8 +25,9 @@ export function EntryScreen() {
 
   return (
     <Screen>
+      <DemoBar />
       <form onSubmit={submit} style={{ display: 'contents' }}>
-        <div className="body" style={{ paddingTop: 56, gap: 18 }}>
+        <div className="body" style={{ paddingTop: 28, gap: 18 }}>
           <Logo width={112} />
           <h1 className="h1 lg">{t('s1.title')}</h1>
           <p className="lead">{t('s1.lead')}</p>

@@ -7,12 +7,13 @@ import { useApp } from '../state.jsx';
 import { href, go } from '../router.js';
 import { beginTalkMedia } from '../live/media.js';
 import { InstallPrompt } from '../components/install.jsx';
+import { DemoBar } from '../components/demo.jsx';
 
 /** S3 · Today — her journey home. One primary action: today's talk. */
 export function TodayScreen({ openMenu }) {
   const { t } = useT();
   const { persona: p } = useApp();
-  const vars = { name: p.name, weeks: p.weeks, day: p.day, days: p.daysAfterBirth };
+  const vars = { name: p.name, weeks: p.weeks, day: p.day, days: p.daysAfterBirth, age: p.age };
   const postnatal = p.stage === 'postnatal';
   // Mic + front camera are asked for inside this tap (iOS Safari needs a user gesture), then the talk opens.
   // Get today's talk ready while she reads: ask the server whether live talk is on and preload the
@@ -40,9 +41,10 @@ export function TodayScreen({ openMenu }) {
 
   return (
     <Screen>
+      <DemoBar />
       <Header name={p.name} onSwitch={openMenu} onProfile={openMenu} />
       <div className="body">
-        <Eyebrow>{postnatal ? t('s3.eyebrowPostnatal', vars) : t('s3.eyebrow', vars)}</Eyebrow>
+        <Eyebrow>{postnatal ? t('s3.eyebrowPostnatal', vars) : p.stage === 'elder' ? t('s3.eyebrowElder', vars) : t('s3.eyebrow', vars)}</Eyebrow>
         <h1 className="h1">{t(`p.${p.id}.hello`, vars)}</h1>
 
         {postnatal ? (

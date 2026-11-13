@@ -94,6 +94,11 @@ export function AllFineScreen({ openMenu }) {
           <h3>{t('s11.noted')}</h3>
           <Checklist items={items} />
         </Card>
+        {p.medicines?.some((m) => m.isNew) && (
+          <Card tone="green">
+            <p>{t(`p.${p.id}.fineNote`)}</p>
+          </Card>
+        )}
         <Card tone="plain">
           <p>{t(`p.${p.id}.thisWeek`)}</p>
         </Card>

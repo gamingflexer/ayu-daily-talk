@@ -19,12 +19,15 @@ export const SIGNS = {
   bleeding: { group: 'pregnancy' },
   fluid_leak: { group: 'pregnancy' },
   reduced_fetal_movement: { group: 'pregnancy' },
-  severe_abdominal_pain: { group: 'pregnancy' },
+  severe_abdominal_pain: { group: 'any' },
   // tapped on the body map (lower belly) in pregnancy; strong pain there becomes severe_abdominal_pain
   lower_belly_pain: { group: 'pregnancy' },
   fever: { group: 'any' },
   convulsions: { group: 'any' },
   breathlessness: { group: 'any' },
+  // anyone, e.g. side effects of a new medicine (metformin)
+  vomiting_no_food: { group: 'any' },
+  dehydration: { group: 'any' },
   // after birth (mother)
   heavy_bleeding: { group: 'postnatal' },
   foul_discharge: { group: 'postnatal' },
@@ -48,6 +51,8 @@ const SEE_TODAY_ALONE = [
   'reduced_fetal_movement',
   'blurred_vision',
   'severe_abdominal_pain',
+  'vomiting_no_food',
+  'dehydration',
   'fever',
   'foul_discharge',
   'baby_yellow_skin',
@@ -78,8 +83,16 @@ export function maxLevel(a, b) {
  * @param {{signs: string[], weeks?: number, daysAfterBirth?: number}} input
  * @returns {{level: string, reasons: string[], rule: string|null}}
  */
-export function evaluate({ signs = [], weeks, daysAfterBirth } = {}) {
-  const set = new Set(signs.filter((s) => s in SIGNS));
+/** Sign groups that apply to each stage. Someone who is not pregnant never gets pregnancy or newborn rules. */
+const GROUPS = {
+  pregnant: ['pregnancy', 'any'],
+  postnatal: ['pregnancy', 'postnatal', 'newborn', 'any'],
+  elder: ['any'],
+};
+
+export function evaluate({ signs = [], weeks, daysAfterBirth, stage } = {}) {
+  const groups = GROUPS[stage] || null;
+  const set = new Set(signs.filter((s) => s in SIGNS && (!groups || groups.includes(SIGNS[s].group))));
   const reasons = [];
   let level = 'none';
   let rule = null;
@@ -96,7 +109,7 @@ export function evaluate({ signs = [], weeks, daysAfterBirth } = {}) {
   for (const s of SEE_TODAY_ALONE) if (set.has(s)) hit('see_today', s, `alone:${s}`);
 
   for (const [a, b] of PAIRS) {
-    if (set.has(a) && set.has(b)) {
+    if (stage !== 'elder' && set.has(a) && set.has(b)) {
       // After 20 weeks this pair can mean pre-eclampsia; before 20 weeks it is still worth a same-day check.
       hit('see_today', `${a}+${b}`, `pair:${a}+${b}${weeks >= 20 ? ':after20w' : ''}`);
     }

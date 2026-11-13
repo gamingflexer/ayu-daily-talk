@@ -18,7 +18,11 @@ export const PICTURE_SIGNS = {
   baby_skin_colour: { light: 'baby_yellow_skin', deep: 'baby_yellow_skin' },
   stool_colour: { pale: 'baby_pale_stool' },
   medicine_strip: {},
+  stomach_upset: { vomiting: 'vomiting_no_food' },
 };
+
+/** Picture sets where the back camera helps her compare (it turns on by itself for these). */
+export const CAMERA_SETS = new Set(['feet_swelling', 'baby_skin_colour', 'stool_colour', 'medicine_strip']);
 
 /** Tile in a set that means "no, looks normal" when the set is shown on a yes/no card. */
 export const PICTURE_NORMAL = { feet_swelling: 'normal', baby_skin_colour: 'normal', stool_colour: 'yellow' };
@@ -108,7 +112,7 @@ function deriveSigns(state) {
   const live = state.answers.filter((a) => !a.changed);
   for (const a of live) for (const x of a.signs || []) signs.add(x);
   // Strong pain in the lower belly in pregnancy (body map + severity on the same pain).
-  const pregnant = state.persona.stage !== 'postnatal';
+  const pregnant = state.persona.stage === 'pregnant';
   const body = [...live].reverse().find((a) => a.kind === 'body');
   const sev = [...live].reverse().find((a) => a.kind === 'severity');
   if (pregnant && body && LOWER_BELLY.has(body.answer) && sev?.answer === 'severe') signs.add('severe_abdominal_pain');
@@ -130,7 +134,7 @@ function answerSigns(state, card, answer, meta) {
     if (sign) out.push(sign);
   }
   if (card.kind === 'severity' && answer === 'severe' && SEVERE_MEANS.has(card.sign)) out.push(card.sign);
-  if (card.kind === 'body' && LOWER_BELLY.has(answer) && state.persona.stage !== 'postnatal') out.push('lower_belly_pain');
+  if (card.kind === 'body' && LOWER_BELLY.has(answer) && state.persona.stage === 'pregnant') out.push('lower_belly_pain');
   if (card.kind === 'search' && SYMPTOM_SIGNS[meta.symptom]) out.push(SYMPTOM_SIGNS[meta.symptom]);
   return out;
 }
@@ -138,7 +142,7 @@ function answerSigns(state, card, answer, meta) {
 function runRules(state) {
   deriveSigns(state);
   const p = state.persona;
-  state.rule = evaluate({ signs: [...state.signs], weeks: p.weeks, daysAfterBirth: p.daysAfterBirth });
+  state.rule = evaluate({ signs: [...state.signs], weeks: p.weeks, daysAfterBirth: p.daysAfterBirth, stage: p.stage });
   return referral(state);
 }
 

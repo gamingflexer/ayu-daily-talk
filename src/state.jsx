@@ -23,7 +23,7 @@ function save(v) {
 const Ctx = createContext(null);
 
 export function AppProvider({ children }) {
-  const [s, setS] = useState(() => ({ lang: 'en', personaId: 'sunita', phone: '', lastTalk: null, plans: {}, ...load() }));
+  const [s, setS] = useState(() => ({ lang: 'en', personaId: 'reena', phone: '', lastTalk: null, plans: {}, ...load() }));
   // patch may be a function of the previous state (for merges from talk events).
   const update = useCallback((patch) => {
     setS((prev) => {

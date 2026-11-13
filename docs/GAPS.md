@@ -29,6 +29,8 @@ Status: **built** = done in this round (see the commit log), **design-only** = s
 | T17 | Om (13 Nov): no state while Ayu is thinking, etc. | rule 4 | built: state chip from engine events (`src/live/phase.js`), spinner on the tapped answer, reconnect, waits on S2/S3/S8/S9/S13 |
 | T18 | Om (13 Nov, after Ada): more answer types and depth, not every question a card. | — | built: duration, severity, body map, symptom search, "What does this mean?", "Previous", one card at a time, missing-card nudge; no ranked conditions |
 | T19 | The model sometimes still shows a card without saying the question aloud, and once added a "not medical advice" line (live run 13 Nov). | — | open — prompt tightened; watch in review |
+| T20 | Om (13 Nov): two one-tap demo cases at the top (pregnant week 34; grandma on new metformin). | — | built: demo bar on S1 + Today, Reena default, new persona Shanti (`stage: elder`), metformin side-effect rules, picture/icon answers, "Ayu knows" strip |
+| T21 | Live runs of the demos (13 Nov): the grandma demo asked the stomach picture card first and said the reassurance line, then waited for her voice instead of going on to the danger signs; the pregnant demo asked headache severity instead of the feet picture card. | — | prompt tightened (persona focus for Reena; "go straight on" for the new medicine); not re-run live |
 | T14 | S13 model note once said "Routine referral level" while the rules said see today. | rules decide | built: the note may not state the level; a note that sounds routine on see_today/emergency is dropped (`noteContradicts`) |
 
 ## Core screens S1–S13

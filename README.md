@@ -34,6 +34,13 @@ pnpm i && pnpm dev
 
 Other scripts: `pnpm test` (red-flag rules, talk-state tools, doctor summary, server guards), `pnpm build`, `pnpm start` (serve `dist/` + API in production), `pnpm icons`, `pnpm scan` (gitleaks).
 
+### Two one-tap demos
+
+The top of S1 and Today has **Try a demo:** with two mock cases; one tap starts that talk (mic + camera asked inside the tap).
+
+1. **Pregnant, week 34** (Reena; the default). Ayu asks “Do your feet or face look like this today?” with picture answers (Yes — puffy feet / Yes — a dent stays when pressed / No / Not sure → camera). Puffy feet + a headache that won’t go → the fixed pair rule → S10 “Please see a doctor today” with the nearest facility and free ambulance 108 (Flow B).
+2. **Grandma on a new sugar tablet** (Shanti, 68, not pregnant). Ayu already knows she started metformin 5 days ago; the call shows “Ayu knows: new sugar tablet (metformin) since 5 days”. Ayu asks “How is your stomach since the new tablet?” with icon answers (A little upset, loose motion / Vomiting, can’t keep food down / No problem). A little upset → all fine, with “Normal in the first weeks. Take it with food and keep taking it…”. Vomiting, dehydration (very thirsty, dizzy, little urine) or strong belly pain → see someone today. Pregnancy and newborn rules never apply to her (`stage: 'elder'` in `shared/red-flags.js`), and Ayu never tells her to stop the tablet.
+
 ### Demo paths
 
 | Route | What |

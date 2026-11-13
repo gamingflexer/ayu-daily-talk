@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useT } from '../i18n/index.jsx';
 import { PICTURES } from './pictures.jsx';
-import { PICTURE_NORMAL, SYMPTOM_KEYS } from '../../shared/talk-state.js';
+import { PICTURE_NORMAL, SYMPTOM_KEYS, CAMERA_SETS } from '../../shared/talk-state.js';
 import womanUrl from '../assets/figma/woman-illustration.svg';
 import closeUrl from '../assets/figma/icon-close.svg';
 import pauseUrl from '../assets/figma/icon-pause.svg';
@@ -26,6 +26,7 @@ export function HerVideo({
   camState, // 'off' | 'blocked' | 'starting'
   onCamera,
   status, // <StateChip> or null
+  knows, // "Ayu knows: …" strip (what Ayu already knows about her)
   height,
   children,
 }) {
@@ -84,6 +85,11 @@ export function HerVideo({
       )}
       {modeTag && <span className="mode-tag">{modeTag}</span>}
       {status}
+      {knows && (
+        <div className="knows-strip" role="note">
+          {knows}
+        </div>
+      )}
       {caption && (
         <div className="caption" aria-live="polite">
           <span className="who">{caption.who === 'her' ? t('call.you') : 'Ayu'}</span>
@@ -274,7 +280,7 @@ export function QuestionCard({ card, onAnswer, onCamera, pending = null, onPrevi
             );
           })}
         </div>
-        {!editing && (
+        {!editing && CAMERA_SETS.has(card.pictureSet) && (
           <button className="answer camera" onClick={onCamera} disabled={pend != null}>
             <img src={cameraUrl} alt="" width="30" height="26" />
             {t('call.showOnCamera')}

@@ -6,6 +6,9 @@ export default {
   app: {
     demoMap: 'Screens & flows',
     mockBadge: 'Demo · mock data only — no real patients',
+    demoTry: 'Try a demo:',
+    demoPregnant: 'Pregnant, week 34',
+    demoGrandma: 'Grandma on a new sugar tablet',
   },
   common: {
     yes: 'Yes',
@@ -55,6 +58,7 @@ export default {
   s3: {
     eyebrow: 'Week {weeks} · Day {day}',
     eyebrowPostnatal: 'Baby · Day {days} · Home',
+    eyebrowElder: 'Age {age} · Today',
     talkTitle: 'Today’s 5-minute talk',
     start: 'Start talking',
     weak: 'Weak network? Call 1800 •••• ••• — same talk, by phone.',
@@ -68,6 +72,8 @@ export default {
   call: {
     pill: 'Daily talk · Week {weeks} · {time}',
     pillPostnatal: 'Baby talk · Day {days} · {time}',
+    pillElder: 'Daily talk · {time}',
+    knows: 'Ayu knows: {what}',
     you: 'You',
     illustration: 'Illustration',
     cameraOn: 'Your camera — only Ayu sees it',
@@ -147,6 +153,10 @@ export default {
     pnQ2: 'Is the baby feeding well today?',
     pnQ3: 'Does the baby look yellow?',
     pnQ4: 'Any heavy bleeding for you?',
+    elQ1: 'Did you take your sugar tablet yesterday?',
+    elQ2: 'Any vomiting today — can you keep food down?',
+    elQ3: 'Very thirsty or dizzy, or passing little urine?',
+    elQ4: 'Any strong pain in the belly?',
     continued: 'Continuing the talk you started on video.',
     connecting: 'Connecting the call…',
   },
@@ -212,6 +222,7 @@ export default {
     eyebrow: 'For your doctor · 2-minute read',
     heading: '{name}, {weeks} weeks',
     headingPostnatal: '{name} · day {days} after birth',
+    headingElder: '{name}, {age}',
     bp: 'BP ({n} readings, 3 weeks)',
     today: '{bp} today',
     cta: 'Send on WhatsApp',
@@ -322,6 +333,27 @@ export default {
         'dot|Home 36 hours after delivery',
       ],
     },
+    shanti: {
+      hello: 'Namaste {name} ji,\nHow are you today?',
+      talkBody: 'Ayu will ask about your new sugar tablet, your stomach, food and sleep.',
+      knows: 'new sugar tablet (metformin) since 5 days',
+      journey: [
+        'done|Sugar test at PHC · new tablet started 5 days ago',
+        'next|Metformin after breakfast · taken 5 of 5 days',
+        'todo|Sugar check again · PHC Mishrikh · in 4 weeks',
+        'todo|Eye check for sugar · not booked yet',
+      ],
+      why: 'You told Ayu you are vomiting and can’t keep food down. With a new sugar tablet this needs a check today.',
+      noted: ['done|Metformin taken after breakfast', 'warn|Stomach a little upset — Ayu asks again tomorrow', 'done|Ate 2 meals'],
+      thisWeek: 'Ayu asks about your stomach every day this week and tells your doctor if it doesn’t settle.',
+      fineNote: 'Normal in the first weeks. Take it with food and keep taking it. Ayu asks again tomorrow and tells your doctor if it doesn’t settle.',
+      share: [
+        'dot|68 · sugar (type 2) found last month',
+        'dot|Metformin 500 mg since 5 days · taken 5 of 5 days',
+        'warn|Stomach a little upset, loose motion (her words)',
+        'dot|Son Mohan helps with the phone',
+      ],
+    },
   },
 
   asha: {
@@ -359,6 +391,8 @@ export default {
     baby_cold_or_hot: 'Baby too cold or too hot',
     baby_convulsions: 'Baby has fits',
     baby_pale_stool: 'Baby’s stool pale or white',
+    vomiting_no_food: 'Vomiting, can’t keep food down',
+    dehydration: 'Very thirsty, dizzy or little urine',
   },
 
   // Answer types on the cards (all tool calls; see shared/live-config.js).
@@ -423,17 +457,28 @@ export default {
 
   pictures: {
     note: 'Illustrations for now — licensed real photos will replace them.',
-    feet_swelling: { normal: 'Normal', puffy: 'A little puffy', pitting: 'Very swollen — a dent stays' },
+    feet_swelling: { normal: 'Normal', puffy: 'Puffy feet', pitting: 'A dent stays when pressed' },
     baby_skin_colour: { normal: 'Not yellow', light: 'A little yellow', deep: 'Very yellow' },
     stool_colour: { yellow: 'Yellow', green: 'Green', pale: 'Pale / white' },
     medicine_strip: { red_round: 'Red, round', white_round: 'White, round', capsule: 'Capsule' },
+    stomach_upset: { upset: 'A little upset, loose motion', vomiting: 'Vomiting, can’t keep food down', fine: 'No problem' },
   },
 
   // What the mock Ayu says (live mode uses the real model instead).
   mock: {
     greet: 'Namaste {name}. This is your 5-minute talk. How are you feeling today?',
     herFine: 'I’m okay. A little tired.',
-    qSwelling: 'Do your feet or face look swollen today?',
+    qSwelling: 'Do your feet or face look like this today?',
+    herHeadache: 'My head has been hurting since morning.',
+    qHeadache: 'Do you have a headache that won’t go?',
+    explainHeadache: 'A headache that stays even after rest. With swelling, it needs a check today.',
+    elGreet: 'Namaste {name} ji. This is your daily talk. I know you started a new sugar tablet, metformin, 5 days ago.',
+    elQStomach: 'How is your stomach since the new tablet?',
+    explainStomach: 'Some stomach upset is common in the first weeks of this tablet. Vomiting that does not stop is not.',
+    elQThirst: 'Are you very thirsty or dizzy, or passing little urine?',
+    explainThirst: 'These can mean the body is low on water. That needs a check today.',
+    elFine: 'That is normal in the first weeks. Take it with food and keep taking it. I’ll ask again tomorrow and tell your doctor if it doesn’t settle.',
+    elSeeToday: 'Thank you for telling me. Vomiting like this needs a check today. Keep taking your tablets until the doctor sees you.',
     pickPicture: 'That’s okay. Pick the picture that looks most like yours.',
     pickPictureQ: 'Which looks like your feet today?',
     ackNoted: 'Thank you. I’ve noted that.',

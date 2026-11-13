@@ -60,6 +60,30 @@ function Strip({ pill, round = true }) {
   );
 }
 
+/** Icons for "how is your stomach on the new tablet" (no body photo). */
+function Tummy({ kind }) {
+  return (
+    <svg viewBox="0 0 120 120" role="img">
+      <rect width="120" height="120" fill="#4a4656" />
+      <path d="M38 30h44q14 0 14 18v26q0 26-36 26T24 74V48q0-18 14-18z" fill="#e8b796" />
+      {kind === 'fine' && <path d="M44 68l12 12 22-26" stroke="#23955e" strokeWidth="7" fill="none" strokeLinecap="round" strokeLinejoin="round" />}
+      {kind === 'upset' && (
+        <>
+          <path d="M40 58q8-8 16 0t16 0t16 0" stroke="#c0704a" strokeWidth="5" fill="none" strokeLinecap="round" />
+          <path d="M40 74q8-8 16 0t16 0t16 0" stroke="#c0704a" strokeWidth="5" fill="none" strokeLinecap="round" />
+        </>
+      )}
+      {kind === 'vomiting' && (
+        <>
+          <path d="M60 46v18" stroke="#b3261e" strokeWidth="8" strokeLinecap="round" />
+          <circle cx="60" cy="78" r="5" fill="#b3261e" />
+          <path d="M92 26q6 10 0 14q-6-4 0-14zM102 40q5 8 0 11q-5-3 0-11z" fill="#8fc1e3" />
+        </>
+      )}
+    </svg>
+  );
+}
+
 export const PICTURES = {
   feet_swelling: [
     { key: 'normal', art: <Foot swell={0} /> },
@@ -80,5 +104,10 @@ export const PICTURES = {
     { key: 'red_round', art: <Strip pill="#F15C3E" /> },
     { key: 'white_round', art: <Strip pill="#ffffff" /> },
     { key: 'capsule', art: <Strip pill="#4f7fd1" round={false} /> },
+  ],
+  stomach_upset: [
+    { key: 'upset', art: <Tummy kind="upset" /> },
+    { key: 'vomiting', art: <Tummy kind="vomiting" /> },
+    { key: 'fine', art: <Tummy kind="fine" /> },
   ],
 };
