@@ -33,6 +33,7 @@ export const SIGNS = {
   baby_fast_breathing: { group: 'newborn' },
   baby_cold_or_hot: { group: 'newborn' },
   baby_convulsions: { group: 'newborn' },
+  baby_pale_stool: { group: 'newborn' },
 };
 
 /** One sign alone means "call 108 now". */
@@ -51,6 +52,7 @@ const SEE_TODAY_ALONE = [
   'baby_poor_feeding',
   'baby_fast_breathing',
   'baby_cold_or_hot',
+  'baby_pale_stool',
 ];
 
 /** Signs that, together, mean "see someone today" (possible high BP). */

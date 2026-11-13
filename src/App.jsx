@@ -60,10 +60,10 @@ function Shell() {
   else if (path === '/today') screen = <TodayScreen openMenu={openMenu} />;
   else if (path === '/talk') {
     dark = true;
-    screen = <TalkScreen key={query.demo || 'live'} demo={query.demo} forceMock={query.mode === 'mock'} />;
+    screen = <TalkScreen key={query.demo || 'live'} demo={query.demo} forceMock={query.mode === 'mock'} net={query.net} />;
   } else if (path === '/phone') {
     dark = true;
-    screen = <PhoneScreen />;
+    screen = <PhoneScreen fromTalk={query.from === 'talk'} />;
   } else if (path === '/photo') {
     dark = true;
     screen = <PhotoView purpose={query.purpose} onSkip={() => go('/today')} onPhoto={() => go('/today')} />;

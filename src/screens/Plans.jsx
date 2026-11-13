@@ -1,27 +1,52 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Screen, Header, Card, Checklist, Eyebrow, Button, TextLink } from '../components/ui.jsx';
 import { useT } from '../i18n/index.jsx';
 import { useApp } from '../state.jsx';
 import { href } from '../router.js';
+import { PLAN_ITEMS } from '../../shared/talk-state.js';
+import { buildDoctorSummary } from '../../shared/doctor-summary.js';
+import { checkLive, liveServerUrl } from '../live/server.js';
+
+/**
+ * The plan on screen: her saved plan (mock record, one line per PLAN_ITEMS key)
+ * with every item Ayu saved in a talk (update_plan) laid over it.
+ */
+function mergePlan(baseItems, updates = {}, t) {
+  const base = Array.isArray(baseItems) ? baseItems : [];
+  const keys = base.length ? PLAN_ITEMS.slice(0, base.length) : [];
+  const rows = keys.map((k, i) => ({ key: k, item: base[i] }));
+  for (const k of PLAN_ITEMS) if (updates[k] && !keys.includes(k)) rows.push({ key: k, item: null });
+  return rows.map(({ key, item }) => {
+    const u = updates[key];
+    if (!u) return item;
+    return {
+      mark: u.ready ? 'done' : 'todo',
+      text: (
+        <>
+          {t(`s12.items.${key}`)}: {u.value} <span className="updated">· {t('s12.updated')}</span>
+        </>
+      ),
+    };
+  });
+}
 
 /** S12 · Birth and travel plan — built inside daily talks. */
 export function BirthPlanScreen({ openMenu }) {
   const { t } = useT();
-  const { persona: p } = useApp();
-  const id = t(`p.${p.id}.plan`) === `p.${p.id}.plan` ? 'sunita' : p.id;
-  const items = t(`p.${id}.plan`);
-  const ready = items.filter((x) => x.startsWith('done|')).length;
+  const { persona: p, plans } = useApp();
+  const base = t(`p.${p.id}.plan`);
+  const items = mergePlan(Array.isArray(base) ? base : [], plans?.[p.id], t);
+  const ready = items.filter((x) => (typeof x === 'string' ? x.startsWith('done|') : x.mark === 'done')).length;
+  const hasNote = t(`p.${p.id}.planNote`) !== `p.${p.id}.planNote`;
   return (
     <Screen>
       <Header name={p.name} onSwitch={openMenu} onProfile={openMenu} />
       <div className="body">
-        <Eyebrow>{t('s12.eyebrow', { n: ready, total: items.length })}</Eyebrow>
+        <Eyebrow>{t('s12.eyebrow', { n: ready, total: Math.max(items.length, PLAN_ITEMS.length) })}</Eyebrow>
         <h1 className="h1">{t('s12.title')}</h1>
-        <Card>
-          <Checklist items={items} />
-        </Card>
+        <Card>{items.length ? <Checklist items={items} /> : <p>{t('s12.empty')}</p>}</Card>
         <Card tone="plain">
-          <p>{t(`p.${id}.planNote`)}</p>
+          <p>{hasNote ? t(`p.${p.id}.planNote`) : t('s12.emptyNote')}</p>
         </Card>
       </div>
       <div className="foot">
@@ -65,21 +90,56 @@ function FakeQr() {
   );
 }
 
-/** S13 · Share with doctor — a 2-minute read. */
+/** S13 · Share with doctor — a 2-minute read, built from today's talk (shared/doctor-summary.js). */
 export function ShareDoctorScreen({ openMenu }) {
   const { t } = useT();
-  const { persona: p } = useApp();
+  const { persona: p, lastTalk, update } = useApp();
   const [qr, setQr] = useState(false);
+  const talk = lastTalk && lastTalk.persona === p.id ? lastTalk : null;
+  const summary = buildDoctorSummary({ persona: p, talk });
+  const [note, setNote] = useState(talk?.doctorNote || null);
+  const [loadingNote, setLoadingNote] = useState(false);
   const bp = p.bp || [];
   const last = bp[bp.length - 1];
-  const summary = [t('s13.heading', { name: p.name, weeks: p.weeks }), ...t(`p.${p.id}.share`).map((x) => `• ${x.replace(/^\w+\|/, '')}`)].join('\n');
+
+  // Optional short note written by the model from the same facts (one request per talk, cached).
+  useEffect(() => {
+    if (!talk || talk.doctorNote !== undefined) return;
+    let alive = true;
+    (async () => {
+      const live = await checkLive();
+      if (!alive || !live.live) return;
+      setLoadingNote(true);
+      try {
+        const res = await fetch(`${liveServerUrl()}/api/summary`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ persona: p.id, talk }),
+        });
+        const body = res.ok ? await res.json() : {};
+        if (!alive) return;
+        setNote(body.note || null);
+        update((prev) => (prev.lastTalk?.at === talk.at ? { lastTalk: { ...prev.lastTalk, doctorNote: body.note || null } } : {}));
+      } catch {
+        // offline — the deterministic summary is enough
+      } finally {
+        if (alive) setLoadingNote(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [talk?.at]);
+
+  const shareText = note ? `${summary.text}\n\nNote: ${note}` : summary.text;
   return (
     <Screen>
       <Header name={p.name} onSwitch={openMenu} onProfile={openMenu} />
       <div className="body">
         <Eyebrow>{t('s13.eyebrow')}</Eyebrow>
         <h1 className="h1">{p.stage === 'postnatal' ? t('s13.headingPostnatal', { name: p.name, days: p.daysAfterBirth }) : t('s13.heading', { name: p.name, weeks: p.weeks })}</h1>
-        <Card>
+        <Card tone="summary">
           {bp.length > 1 && (
             <>
               <p className="small">{t('s13.bp', { n: bp.length })}</p>
@@ -89,12 +149,26 @@ export function ShareDoctorScreen({ openMenu }) {
               </p>
             </>
           )}
-          <Checklist items={t(`p.${p.id}.share`)} />
+          {!talk && <p className="small">{t('s13.noTalk')}</p>}
+          {summary.sections.map((sec) => (
+            <div key={sec.id} lang="en">
+              <h3 className="sum-h">{sec.title}</h3>
+              <Checklist items={sec.lines} />
+            </div>
+          ))}
         </Card>
+        {(note || loadingNote) && (
+          <Card tone="plain">
+            <h3>{t('s13.note')}</h3>
+            <p lang="en">{note || t('s13.noteLoading')}</p>
+            {note && <p className="small">{t('s13.noteBy')}</p>}
+          </Card>
+        )}
+        <p className="small">{t('s13.builtFrom')}</p>
         {qr && <FakeQr />}
       </div>
       <div className="foot">
-        <Button href={`https://wa.me/?text=${encodeURIComponent(summary)}`} target="_blank" rel="noopener">
+        <Button href={`https://wa.me/?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noopener">
           {t('s13.cta')}
         </Button>
         <TextLink onClick={() => setQr((v) => !v)}>{t('s13.qr')}</TextLink>

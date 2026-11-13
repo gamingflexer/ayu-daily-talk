@@ -82,6 +82,15 @@ export default {
     mockMode: 'Mock talk',
     fellBackToMock: 'Live talk not available ({reason}). Continuing in mock mode.',
     noCamera: 'Camera not available. You can keep talking.',
+    cameraTurn: {
+      feet: 'Show your feet and ankles',
+      skin_patch: 'Show only the skin, in daylight — no face',
+      medicine_strip: 'Show the medicine strip or box',
+      document: 'Show the report or MCP card page',
+    },
+    cameraTurnHint: 'Ayu is looking and will tell you what it sees.',
+    doneShowing: 'Done showing',
+    weakSocket: 'The connection dropped.',
   },
 
   s7: {
@@ -97,13 +106,18 @@ export default {
     stub: 'Mock call — the phone bridge is a stub',
     q1: 'Did you take your iron tablet yesterday?',
     q2: 'Is the baby moving as usual today?',
-    q3: 'Any headache, blurry eyes or swelling?',
     prompt: 'Say your answer, or press a number:',
     key1: 'Yes',
     key2: 'No',
     key3: 'Not sure',
     pressed: 'You pressed {n}. Ayu heard you.',
     note: 'Ayu can’t see you on a call. If it needs a photo, you’ll get an SMS link for later.',
+    q3: 'Any headache that won’t go away?',
+    q4: 'Any swelling of face or hands, or blurry eyes?',
+    pnQ2: 'Is the baby feeding well today?',
+    pnQ3: 'Does the baby look yellow?',
+    pnQ4: 'Any heavy bleeding for you?',
+    continued: 'Continuing the talk you started on video.',
   },
   s9: {
     title: 'Show me the tablets you take for this',
@@ -141,14 +155,26 @@ export default {
     cta: 'Call 108 now',
     remind: 'I’m going — remind me in 1 hour',
     reminded: 'Ayu will remind you at {time}.',
+    ayuAdded: 'Ayu was also worried: {reason}',
   },
   s11: {
     title: 'All fine today.\nTalk again tomorrow, 8 pm.',
     noted: 'Ayu noted today',
     watch: 'Swollen feet — Ayu will ask again tomorrow',
     cta: 'See my journey',
+    fromTalk: 'From today’s talk',
+    camera: 'shown on camera',
+    askAgain: 'Ayu will ask again tomorrow',
   },
-  s12: { eyebrow: 'Your birth plan · {n} of {total} ready', title: 'Where, how and with whom', cta: 'Finish my plan with Ayu' },
+  s12: {
+    eyebrow: 'Your birth plan · {n} of {total} ready',
+    title: 'Where, how and with whom',
+    cta: 'Finish my plan with Ayu',
+    updated: 'updated in today’s talk',
+    items: { hospital: 'Hospital', transport: 'Getting there', companion: 'Who comes', money: 'Money kept', documents_bag: 'Bag', blood_donor: 'Blood donor' },
+    empty: 'Not started yet. Ayu will ask one question a day after week 20.',
+    emptyNote: 'Ayu builds the plan inside your daily talks — no form to fill.',
+  },
   s13: {
     eyebrow: 'For your doctor · 2-minute read',
     heading: '{name}, {weeks} weeks',
@@ -157,6 +183,11 @@ export default {
     today: '{bp} today',
     cta: 'Send on WhatsApp',
     qr: 'or show this QR at the clinic',
+    noTalk: 'No talk yet today — this is from her record.',
+    builtFrom: 'Built from today’s talk by fixed rules. Not a diagnosis. Written in English for the doctor; her own words stay as she said them.',
+    note: 'Short note for the doctor',
+    noteBy: 'Written by the AI from the facts above',
+    noteLoading: 'Writing a short note…',
   },
 
   // Persona content (mock).
@@ -293,6 +324,7 @@ export default {
     baby_fast_breathing: 'Baby breathing fast',
     baby_cold_or_hot: 'Baby too cold or too hot',
     baby_convulsions: 'Baby has fits',
+    baby_pale_stool: 'Baby’s stool pale or white',
   },
 
   pictures: {
@@ -327,6 +359,17 @@ export default {
     pnQYellow: 'Look at the baby’s chest and eyes in daylight. Do they look yellow?',
     pnPickQ: 'Which looks most like your baby’s chest skin?',
     pnQFeeding: 'Any of these today? Tap all that apply.',
+    cameraSaw: {
+      feet: 'Thank you. I can see your ankles — they look a little puffy. Now pick the picture that looks most like yours.',
+      skin_patch: 'Thank you. The skin looks a little yellow to me. Pick the picture that looks closest.',
+      medicine_strip: 'Thank you. I can see a strip of red, round tablets. Is this your iron tablet?',
+      document: 'Thank you. I can see the page. I’ll read it out to you.',
+    },
+    qBag: 'For the birth plan: is your hospital bag packed — MCP card, Aadhaar and clothes?',
+    bagValue: 'MCP card, Aadhaar, reports, clothes',
+    ackBagReady: 'Very good. I’ve marked your bag as ready.',
+    ackBagTodo: 'Okay. I’ve kept it on your list — pack it this week.',
+    doctorQ: 'Is my BP okay for the baby?',
   },
 
   flows: {

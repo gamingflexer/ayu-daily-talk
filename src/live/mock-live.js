@@ -1,6 +1,6 @@
 // Mock talk: no network, no key. A scripted Ayu that emits exactly the same
-// events as gemini-live.js (captions, tool calls → cards, referral, finish),
-// and runs the same local tool handlers and red-flag rules.
+// events as gemini-live.js (captions, tool calls → cards, referral, plan,
+// finish, camera-turn), and runs the same local tool handlers and red-flag rules.
 
 import { createTalkState, handleTool, recordAnswer, referral } from '../../shared/talk-state.js';
 
@@ -62,6 +62,7 @@ export function createMockTalk({ persona, lang = 'en', t, speak = true }) {
     const out = handleTool(state, name, args);
     emit({ type: 'tool', name, args, result: out.response });
     if (out.referral) emit({ type: 'referral', referral: out.referral });
+    if (out.plan) emit({ type: 'plan', plan: out.plan });
     if (out.finish) emit({ type: 'finish', ...out.finish });
     if (!out.card) return Promise.resolve(out.response);
     emit({ type: 'card', card: out.card });
@@ -76,7 +77,7 @@ export function createMockTalk({ persona, lang = 'en', t, speak = true }) {
     await say('mock.qSwelling');
     let a = await tool('ask_yes_no', {
       question: t('mock.qSwelling'),
-      not_sure_action: 'pictures',
+      not_sure_action: 'camera',
       picture_set: 'feet_swelling',
       sign: 'swelling_feet',
     });
@@ -111,6 +112,15 @@ export function createMockTalk({ persona, lang = 'en', t, speak = true }) {
     });
     await say(kind === t('mock.painBurning') ? 'mock.ackBurning' : 'mock.ackNoted');
 
+    // S12 — one birth-plan question per talk, saved with update_plan
+    if (persona.weeks >= 20) {
+      await say('mock.qBag');
+      const bag = await tool('ask_yes_no', { question: t('mock.qBag'), not_sure_action: 'none' });
+      if (stopped) return;
+      tool('update_plan', { item: 'documents_bag', value: t('mock.bagValue'), ready: bag === 'yes' });
+      await say(bag === 'yes' ? 'mock.ackBagReady' : 'mock.ackBagTodo');
+    }
+
     // S6 — danger signs, multiple choice; fixed rules decide
     await say('mock.qDanger');
     const signs = await tool('ask_multi_choice', {
@@ -132,7 +142,7 @@ export function createMockTalk({ persona, lang = 'en', t, speak = true }) {
     await say('mock.pnQYellow');
     let a = await tool('ask_yes_no', {
       question: t('mock.pnQYellow'),
-      not_sure_action: 'pictures',
+      not_sure_action: 'camera',
       picture_set: 'baby_skin_colour',
       sign: 'baby_yellow_skin',
     });
@@ -172,9 +182,9 @@ export function createMockTalk({ persona, lang = 'en', t, speak = true }) {
     else if (now.level === 'see_today') await say('mock.seeToday');
     else await say('mock.allFine');
     if (signs?.length) await say('mock.keepTablets');
-    tool('finish_talk', {
-      noted: state.answers.map((x) => `${x.question} → ${Array.isArray(x.answer) ? x.answer.join(', ') || '—' : x.answer}`),
-    });
+    if (state.finished) return;
+    // Like the model: short lines in her language are left to the screen (built from the answers).
+    tool('finish_talk', { questions_for_doctor: signs?.length ? [t('mock.doctorQ')] : [] });
     emit({ type: 'status', status: 'ended' });
   }
 
@@ -195,18 +205,45 @@ export function createMockTalk({ persona, lang = 'en', t, speak = true }) {
         emit({ type: 'status', status: 'error', detail: e.message }),
       );
     },
-    answer(cardId, answer) {
+    answer(cardId, answer, _labels, meta = {}) {
       const p = pending.get(cardId);
       if (!p) return;
       pending.delete(cardId);
-      const r = recordAnswer(state, p.card, answer);
+      const r = recordAnswer(state, p.card, answer, meta);
       emit({ type: 'referral', referral: r });
       p.resolve(answer);
     },
+    /** "Not sure" → camera: the scripted Ayu "looks" and comments, then asks her to pick the picture. */
+    startCameraTurn(cardId, _stream, purpose) {
+      const p = pending.get(cardId);
+      state.photos.push({ purpose, kind: 'video', at: Date.now() });
+      emit({ type: 'camera-turn', on: true, purpose });
+      if (p) {
+        pending.delete(cardId);
+        emit({ type: 'referral', referral: recordAnswer(state, p.card, 'not_sure', { via: 'camera' }) });
+      }
+      (async () => {
+        await wait(1800);
+        await say(`mock.cameraSaw.${purpose}`);
+        p?.resolve('not_sure');
+      })();
+    },
+    endCameraTurn() {
+      emit({ type: 'camera-turn', on: false });
+    },
     sendPhoto(_b64, purpose) {
-      state.photos.push({ purpose, at: Date.now() });
+      state.photos.push({ purpose, kind: 'photo', at: Date.now() });
     },
     setCamera() {},
+    timeCheck() {},
+    finishLocal(by = 'app') {
+      if (state.finished) return;
+      const out = handleTool(state, 'finish_talk', { by });
+      emit({ type: 'finish', ...out.finish });
+    },
+    get speaking() {
+      return typeof speechSynthesis !== 'undefined' && speechSynthesis.speaking;
+    },
     pause(v) {
       paused = v;
       if (v && typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();

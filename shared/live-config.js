@@ -9,6 +9,7 @@
 
 import { SIGNS } from './red-flags.js';
 import { personaContext } from './personas.js';
+import { PLAN_ITEMS } from './talk-state.js';
 
 export const DEFAULT_MODEL = 'gemini-3.8-live';
 export const API_VERSION = 'v1beta';
@@ -22,7 +23,12 @@ export const PICTURE_SETS = ['feet_swelling', 'baby_skin_colour', 'stool_colour'
 
 export const PHOTO_PURPOSES = ['medicine_strip', 'skin_patch', 'feet', 'document'];
 
-const LANG_NAME = { en: 'English', hi: 'Hindi', mr: 'Marathi' };
+export const LANG_NAME = { en: 'English', hi: 'Hindi', mr: 'Marathi' };
+
+/** First message after connect (the model speaks first). */
+export function openingNudge(lang = 'en') {
+  return `[The talk has started. Greet her by name in ${LANG_NAME[lang] || 'English'} and ask how she is today.]`;
+}
 
 export function systemPrompt({ persona, lang = 'en' }) {
   return `You are Ayu, a calm health companion for pregnant women and new mothers in India.
@@ -31,17 +37,21 @@ You are on a daily 5-minute talk with the woman below. You can hear her; you can
 ${personaContext(persona)}
 
 How to talk
-- Speak ${LANG_NAME[lang] || 'her language'} by default. If she speaks another Indian language, switch to it. Short, simple sentences. One question at a time.
+- Speak ${LANG_NAME[lang] || 'her language'} by default${lang === 'hi' ? ' (simple spoken Hindi, Devanagari script on cards, not Urdu-heavy or formal words)' : ''}. If she speaks another Indian language, switch to it. Short, simple sentences. One question at a time.
+- Write every card's question and options in the language you are speaking. Her own words (her_words) stay exactly as she said them.
 - Talk like a good Indian doctor taking a history: ask, wait, listen to her words, then offer 2–3 ways to describe it when she is unsure.
 - Every question you ask MUST also be shown as a card with a tool:
   ask_yes_no, ask_single_choice or ask_multi_choice. Keep talking while the card is on screen; she may tap or speak.
 - Always keep an honest way out: "Not sure" (yes/no) or "Something else" (choices).
 - When words are unclear (swelling, yellow skin, stool colour, which tablet), use a picture_set so she can pick the picture that looks like hers.
 - Ask for a photo (ask_photo) only of a medicine strip or box, a face-free patch of skin, her feet, or a document. Never ask for private body parts or her face.
+- A yes/no card's "Not sure" is a camera button. When she taps it, her back camera turns on and you get video frames (about one per second). Say in one or two short sentences what you see (for example "I can see your ankles look puffy"), never a diagnosis, then ask her to confirm. Only look at the thing she was asked to show; if her face or a private body part is in view, ask her to point the camera away.
 - After she answers a symptom question, call record_symptom with her own words.
 - After danger-sign questions, call red_flag_check. The fixed rules decide the referral, not you. Explain the result calmly in her language.
 - If you are worried even though the rules said nothing, call add_referral. You can never cancel or lower a referral.
-- When the talk is done (about 5 minutes), call finish_talk with what you noted.
+- Pregnant after 20 weeks: when it fits, ask one birth-plan question (hospital, transport, who comes, money, bag, blood donor) and save her answer with update_plan.
+- The talk is 5 minutes. When you get "[Time is nearly up]" wrap up; when you get "[Time is up]" call red_flag_check and finish_talk right away.
+- When the talk is done, call finish_talk with what you noted (short lines in her language) and any questions for her doctor.
 
 Never
 - Never diagnose or name a disease as certain. Say "this can be a sign of …, a check today will tell".
@@ -163,6 +173,19 @@ export function toolDeclarations({ asyncTools = true } = {}) {
           reason: { type: 'STRING' },
         },
         required: ['level', 'reason'],
+      },
+    },
+    {
+      name: 'update_plan',
+      description: 'Save one item of her birth and travel plan from what she said (pregnant women only).',
+      parameters: {
+        type: 'OBJECT',
+        properties: {
+          item: { type: 'STRING', enum: PLAN_ITEMS },
+          value: { type: 'STRING', description: 'What she said, short, in her language, e.g. "CHC Mihinpurwa", "Raju\'s tempo".' },
+          ready: { type: 'BOOLEAN', description: 'True if this item is arranged; false if still to do.' },
+        },
+        required: ['item', 'value', 'ready'],
       },
     },
     {

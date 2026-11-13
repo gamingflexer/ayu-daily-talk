@@ -23,11 +23,12 @@ function save(v) {
 const Ctx = createContext(null);
 
 export function AppProvider({ children }) {
-  const [s, setS] = useState(() => ({ lang: 'en', personaId: 'sunita', phone: '', lastTalk: null, ...load() }));
+  const [s, setS] = useState(() => ({ lang: 'en', personaId: 'sunita', phone: '', lastTalk: null, plans: {}, ...load() }));
+  // patch may be a function of the previous state (for merges from talk events).
   const update = useCallback((patch) => {
     setS((prev) => {
-      const next = { ...prev, ...patch };
-      save({ lang: next.lang, personaId: next.personaId, phone: next.phone, lastTalk: next.lastTalk });
+      const next = { ...prev, ...(typeof patch === 'function' ? patch(prev) : patch) };
+      save({ lang: next.lang, personaId: next.personaId, phone: next.phone, lastTalk: next.lastTalk, plans: next.plans });
       return next;
     });
   }, []);

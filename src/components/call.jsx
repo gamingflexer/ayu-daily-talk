@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useT } from '../i18n/index.jsx';
 import { PICTURES } from './pictures.jsx';
+import { PICTURE_NORMAL } from '../../shared/talk-state.js';
 import womanUrl from '../assets/figma/woman-illustration.svg';
 import closeUrl from '../assets/figma/icon-close.svg';
 import pauseUrl from '../assets/figma/icon-pause.svg';
@@ -9,12 +10,13 @@ import cameraUrl from '../assets/figma/icon-camera.svg';
 import { PlayIcon, SpeakerIcon, VideoOnIcon } from './ui.jsx';
 
 /** Her camera tile. Illustration until she turns the camera on (no avatar, no real person). */
-export function HerVideo({ height = 360, stream, pill, live = true, modeTag, caption, children }) {
+export function HerVideo({ height = 360, stream, back = false, pill, live = true, modeTag, caption, children }) {
   const { t } = useT();
   return (
     <div className="her-video" style={{ '--video-h': `${height}px` }}>
       {stream ? (
         <video
+          className={back ? 'back' : ''}
           autoPlay
           muted
           playsInline
@@ -25,6 +27,7 @@ export function HerVideo({ height = 360, stream, pill, live = true, modeTag, cap
       ) : (
         <img className="illus" src={womanUrl} alt="" />
       )}
+      {back && stream && <div className="cam-guide" aria-hidden="true" />}
       {pill && (
         <div className="call-pill">
           <span className={`dot ${live ? '' : 'off'}`} />
@@ -75,6 +78,38 @@ export function QuestionCard({ card, onAnswer, onCamera }) {
   const [picked, setPicked] = useState([]);
   if (!card) return null;
 
+  // "Not sure" is a camera button (UI rule 1) unless the model said not_sure_action: none.
+  const notSureBtn = (
+    <button className="answer camera" onClick={() => (card.notSure === 'none' ? onAnswer('not_sure') : onCamera())}>
+      {card.notSure !== 'none' && <img src={cameraUrl} alt="" width="30" height="26" />}
+      {t('common.notSure')}
+    </button>
+  );
+
+  // Yes/no with pictures (Figma S4, C2): the yes answers ARE the pictures, then No and Not sure.
+  if (card.kind === 'yes_no' && card.pictureSet && PICTURES[card.pictureSet]) {
+    const normal = PICTURE_NORMAL[card.pictureSet];
+    const tiles = PICTURES[card.pictureSet].filter((p) => p.key !== normal);
+    return (
+      <>
+        <h2 className="question">{card.question}</h2>
+        <div className="pictures two">
+          {tiles.map((p) => (
+            <button key={p.key} className="picture" onClick={() => onAnswer('yes', { picture: p.key })}>
+              {p.art}
+              {t('common.yes')} — {t(`pictures.${card.pictureSet}.${p.key}`).toLowerCase()}
+            </button>
+          ))}
+        </div>
+        <button className="answer" onClick={() => onAnswer('no', normal ? { picture: normal } : {})}>
+          {t('common.no')}
+        </button>
+        {notSureBtn}
+        <p className="picture-note">{t('pictures.note')}</p>
+      </>
+    );
+  }
+
   if (card.pictureSet && card.kind !== 'yes_no') {
     const set = PICTURES[card.pictureSet] || [];
     return (
@@ -84,7 +119,7 @@ export function QuestionCard({ card, onAnswer, onCamera }) {
           {set.map((p) => {
             const label = t(`pictures.${card.pictureSet}.${p.key}`);
             return (
-              <button key={p.key} className="picture" onClick={() => onAnswer(label)}>
+              <button key={p.key} className="picture" onClick={() => onAnswer(label, { picture: p.key })}>
                 {p.art}
                 {label}
               </button>
@@ -110,10 +145,7 @@ export function QuestionCard({ card, onAnswer, onCamera }) {
         <button className="answer" onClick={() => onAnswer('no')}>
           {t('common.no')}
         </button>
-        <button className="answer camera" onClick={() => (card.notSure === 'camera' ? onCamera() : onAnswer('not_sure'))}>
-          <img src={cameraUrl} alt="" width="30" height="26" />
-          {t('common.notSure')}
-        </button>
+        {notSureBtn}
         <p className="hint">{t('call.listening')}</p>
       </>
     );
@@ -180,9 +212,26 @@ export function QuestionCard({ card, onAnswer, onCamera }) {
   return null;
 }
 
+/** "Not sure" → camera turn: what to show, and one button to stop. The preview is in the video tile. */
+export function CameraTurnPanel({ purpose, onDone }) {
+  const { t } = useT();
+  return (
+    <>
+      <h2 className="question">{t(`call.cameraTurn.${purpose}`)}</h2>
+      <p className="hint" style={{ fontSize: 15 }}>
+        {t('call.cameraTurnHint')}
+      </p>
+      <button className="btn" style={{ marginTop: 8 }} onClick={onDone}>
+        {t('call.doneShowing')}
+      </button>
+    </>
+  );
+}
+
 /** Video height per card, so the answers fit at 360 × 640. */
 export function videoHeightFor(card) {
   if (!card) return 360;
+  if (card.kind === 'yes_no' && card.pictureSet) return 120;
   if (card.pictureSet && card.kind !== 'yes_no') return 150;
   if (card.kind === 'multi') return 96;
   if (card.kind === 'single') return 200;

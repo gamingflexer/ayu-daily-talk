@@ -506,6 +506,10 @@ a {
 .her-video video {
   transform: scaleX(-1);
 }
+.her-video video.back {
+  transform: none;
+  object-position: center;
+}
 .her-video .tag {
   position: absolute;
   left: 16px;
@@ -644,6 +648,19 @@ a {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
+}
+.pictures.two {
+  grid-template-columns: repeat(2, 1fr);
+}
+.pictures.two .picture svg {
+  max-height: 96px;
+}
+.cam-guide {
+  position: absolute;
+  inset: 18% 14% 22%;
+  border: 2px dashed rgba(255, 255, 255, 0.85);
+  border-radius: 14px;
+  pointer-events: none;
 }
 .picture {
   display: flex;
@@ -1127,4 +1144,22 @@ a {
 .status.error {
   background: var(--red-wash);
   color: #c2410c;
+}
+
+/* S12 / S13 — talk-built content */
+.updated {
+  color: var(--coral);
+  font-size: 12px;
+  font-weight: 600;
+}
+.sum-h {
+  margin: 12px 0 4px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted, #6b6773);
+}
+.summary > div:first-of-type .sum-h {
+  margin-top: 4px;
 }
