@@ -70,8 +70,15 @@ export function languageRule(lang = 'en') {
 }
 
 /** First message after connect (the model speaks first). */
-export function openingNudge(lang = 'en') {
-  return `[The talk has started. Greet her by name in ${LANG_NAME[lang] || 'English'} and ask how she is today. This greeting is voice only: no card.]`;
+export function openingNudge(lang = 'en', persona = null) {
+  const L = LANG_NAME[lang] || 'English';
+  // A persona with a focus for today (the two demos): greet in one short line, then ask the focus
+  // question with its card in the same turn, without waiting for her to answer the greeting.
+  const hasFocus = Boolean(persona && (persona.focus || (persona.medicines || []).some((m) => m.isNew)));
+  if (hasFocus) {
+    return `[The talk has started. Greet her by name in ${L} in one short sentence, then straight away, in the same turn, ask today's focus question from her context with its card. Do not wait for her to answer the greeting.]`;
+  }
+  return `[The talk has started. Greet her by name in ${L} and ask how she is today. This greeting is voice only: no card.]`;
 }
 
 export function systemPrompt({ persona, lang = 'en' }) {

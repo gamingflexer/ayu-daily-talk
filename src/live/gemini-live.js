@@ -97,7 +97,7 @@ export function createGeminiTalk({ persona, lang = 'en' }) {
     });
     await connect(t);
     // Ayu speaks first, in her language.
-    send({ text: openingNudge(lang) });
+    send({ text: openingNudge(lang, persona) });
   }
 
   async function connect(t) {

@@ -73,3 +73,12 @@ test('the prompt knows the new medicine and never says stop', () => {
   const yesNo = cfg.tools[0].functionDeclarations.find((f) => f.name === 'ask_single_choice');
   assert.ok(yesNo.parameters.properties.picture_set.enum.includes('stomach_upset'));
 });
+
+test('demo personas: the opening goes straight to the focus question with a card', async () => {
+  const { openingNudge } = await import('../shared/live-config.js');
+  const { PERSONAS } = await import('../shared/personas.js');
+  const list = Array.isArray(PERSONAS) ? PERSONAS : Object.values(PERSONAS);
+  const grandma = list.find((p) => (p.medicines || []).some((m) => m.isNew));
+  assert.match(openingNudge('en', grandma), /focus question/);
+  assert.match(openingNudge('en', null), /voice only: no card/);
+});
