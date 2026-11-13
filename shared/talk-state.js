@@ -141,9 +141,9 @@ export function handleTool(state, name, args) {
           reasons: r.reasons,
           instruction:
             r.level === 'emergency'
-              ? 'Tell her to call 108 now. Stay calm and short.'
+              ? 'Tell her to call 108 now. Stay calm and short. Then call finish_talk.'
               : r.level === 'see_today'
-                ? 'Tell her to see a doctor today, why in one line, and to keep taking her tablets.'
+                ? 'Tell her to see a doctor today, why in one line, and to keep taking her tablets. Then call finish_talk.'
                 : 'No danger sign by the rules. Continue the talk.',
         },
       };

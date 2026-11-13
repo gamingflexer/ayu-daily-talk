@@ -23,6 +23,31 @@ const PLAN_LABEL = {
   blood_donor: 'Blood donor',
 };
 const MAX_LINES = 14; // ~2 minutes of reading
+const MAX_ANSWERS = 6;
+
+const signText = (x) => (SIGN[x] ? SIGN[x].toLowerCase() : x.replace(/_/g, ' '));
+
+/** Rule id → words a doctor reads at a glance. */
+export function ruleText(rule) {
+  if (!rule) return '';
+  const [kind, what = '', extra] = rule.split(':');
+  if (kind === 'pair') return `two signs together: ${what.split('+').map(signText).join(' + ')}${extra === 'after20w' ? ' (after 20 weeks)' : ''}`;
+  if (kind === 'alone') return `${signText(what)} on its own`;
+  if (kind === 'count') return 'two or more danger signs together';
+  if (kind === 'emergency') return what === 'yellow_day0' ? 'yellow skin on the first day of life' : `${signText(what)} — emergency sign`;
+  if (kind === 'mood') return 'low mood — check again';
+  if (kind === 'watch') return `${signText(what)} — watch`;
+  return rule;
+}
+
+/**
+ * A model-written note must never soften what the fixed rules decided.
+ * True when the note sounds routine/reassuring while the level is see_today or emergency.
+ */
+export function noteContradicts(level, note = '') {
+  if (!['see_today', 'emergency'].includes(level)) return false;
+  return /\b(routine|no (urgent|immediate|danger|concern|red flag)|non-?urgent|not urgent|normal|reassur|nothing to worry|all fine|stable)\b/i.test(note);
+}
 
 const yesNo = (a) => (a === 'yes' ? 'yes' : a === 'no' ? 'no' : a === 'not_sure' ? 'not sure' : a);
 
@@ -57,7 +82,7 @@ export function buildDoctorSummary({ persona: p, talk, now = Date.now() }) {
     const lines = [`${r.level === 'none' ? 'dot' : r.level === 'watch' ? 'dot' : 'warn'}|${LEVEL_TEXT[r.level] || r.level} (talk ${when} UTC)`];
     const ruleSigns = (talk.signs || []).filter((s) => SIGN[s]);
     if (ruleSigns.length) lines.push(`warn|Danger signs reported: ${ruleSigns.map((s) => SIGN[s].toLowerCase()).join(', ')}`);
-    if (r.rule) lines.push(`dot|Rule: ${r.rule}`);
+    if (r.rule) lines.push(`dot|Rule: ${ruleText(r.rule)}`);
     for (const why of (r.reasons || []).filter((x) => x.startsWith('model:'))) lines.push(`dot|Ayu raised it: ${why.slice(7).trim()}`);
     push('today', 'Today', lines);
   } else {
@@ -71,7 +96,9 @@ export function buildDoctorSummary({ persona: p, talk, now = Date.now() }) {
       const bits = [s.since, s.severity && s.severity !== 'unknown' ? s.severity : null].filter(Boolean).join(', ');
       lines.push(`${s.sign && s.sign !== 'other' ? 'warn' : 'dot'}|“${s.her_words}”${bits ? ` (${bits})` : ''}`);
     }
-    for (const a of talk.answers || []) if (a.kind !== 'photo') lines.push(`dot|${answerLine(a)}`);
+    const answers = (talk.answers || []).filter((a) => a.kind !== 'photo');
+    for (const a of answers.slice(-MAX_ANSWERS)) lines.push(`dot|${answerLine(a)}`);
+    if (answers.length > MAX_ANSWERS) lines.unshift(`dot|${answers.length - MAX_ANSWERS} earlier answers not shown`);
     push('words', 'What she said', lines);
     const shown = (talk.photos || []).map((x) => `dot|${x.kind === 'video' ? 'Showed on camera' : 'Photo'}: ${x.purpose.replace('_', ' ')} (not stored)`);
     push('photos', 'Shown to Ayu', shown);

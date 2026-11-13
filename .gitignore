@@ -28,3 +28,6 @@ dist-ssr
 .env.*
 !.env.example
 *.pem
+
+# local test audio for headless browser checks
+public/*.wav

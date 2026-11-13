@@ -12,7 +12,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { buildLiveConfig, DEFAULT_MODEL, API_VERSION } from '../../shared/live-config.js';
 import { getPersona } from '../../shared/personas.js';
-import { buildDoctorSummary } from '../../shared/doctor-summary.js';
+import { buildDoctorSummary, noteContradicts } from '../../shared/doctor-summary.js';
 import { checkOrigin, rateLimit, takeDaily, envInt } from './guard.js';
 
 const LANGS = ['en', 'hi', 'mr'];
@@ -102,7 +102,10 @@ export async function handleApi(route, req, deps = {}) {
     if (!rateLimit('summary', req.ip, { limit: s.summaryPerMin })) return out(429, { error: 'Too many requests.', summary: det.text });
     if (!takeDaily('summary', s.summaryCap)) return out(200, { note: null, source: 'deterministic', summary: det.text, cap: true });
     try {
+      const level = sanitizeTalk(body.talk)?.referral.level || 'none';
       const note = await (deps.writeNote || writeNote)({ key: s.key, model: s.summaryModel, text: det.text });
+      // The rules decide the level; a note that softens it is dropped.
+      if (noteContradicts(level, note)) return out(200, { note: null, source: 'deterministic', summary: det.text, dropped: 'contradicts referral' });
       return out(200, { note, source: 'model', model: s.summaryModel, summary: det.text });
     } catch (err) {
       console.error('[summary]', err?.message || err);
@@ -156,8 +159,9 @@ async function mintToken({ key, model, config }) {
 }
 
 const NOTE_PROMPT = `You write a handover note for a busy doctor in India.
-Rewrite the summary below as at most 3 short sentences (under 70 words), in English.
-Use only facts in the summary. Lead with the referral level and the danger signs. Quote her own words if they matter.
+Rewrite the summary below as at most 3 short sentences (under 60 words), in English.
+Use only facts in the summary. Start with the danger signs she reported, then what she said in her own words, then anything from her record that matters (BP trend, Hb, missed tablets).
+Do NOT state or judge the referral level or urgency — the fixed rules already show it above your note.
 Do not diagnose, do not suggest or change medicines, do not add advice.
 
 Summary:

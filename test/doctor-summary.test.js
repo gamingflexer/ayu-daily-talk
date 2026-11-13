@@ -69,3 +69,17 @@ test('model-raised referral is shown as raised by Ayu', () => {
   const sum = buildDoctorSummary({ persona: p, talk: snapshotTalk(s) });
   assert.match(sum.text, /Ayu raised it: vomiting every day for a week/);
 });
+
+test('rule ids are shown in words', async () => {
+  const { ruleText } = await import('../shared/doctor-summary.js');
+  assert.equal(ruleText('pair:severe_headache+swelling_face_hands:after20w'), 'two signs together: headache that won’t go + swelling of face or hands (after 20 weeks)');
+  assert.equal(ruleText('alone:bleeding'), 'bleeding or fluid on its own');
+});
+
+test('a model note that softens a see-today referral is caught', async () => {
+  const { noteContradicts } = await import('../shared/doctor-summary.js');
+  assert.equal(noteContradicts('see_today', 'Routine referral level. Danger signs: headache.'), true);
+  assert.equal(noteContradicts('emergency', 'No urgent concern.'), true);
+  assert.equal(noteContradicts('see_today', 'She reports headache and face swelling at 34 weeks; BP rose to 138/92.'), false);
+  assert.equal(noteContradicts('none', 'Routine check.'), false);
+});

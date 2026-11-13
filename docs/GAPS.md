@@ -21,7 +21,10 @@ Status: **built** = done in this round (see the commit log), **design-only** = s
 | T8 | Hindi: UI strings existed, but the model was not told to write the **card text** in Hindi, and the opening nudge was English. | — | built |
 | T9 | No tool for the birth/travel plan, so S12 could not change from a talk. | S12 "built inside daily talks" | built (`update_plan`) |
 | T10 | Session resumption (`goAway` → resume handle) is not handled; a talk longer than the session limit just ends. | — | open (5-min talk is inside the limit) |
-| T11 | Real Gemini Live not tested in this round (no key on this machine). The mock emits the same events. | — | open |
+| T11 | Real Gemini Live end to end. | — | built + checked 13 Nov in headless Chrome with a fake mic/camera (7 short sessions): picture card via `ask_yes_no`, camera turn ("I can see your feet and ankles look a bit puffy"), `record_symptom` → `red_flag_check` → `finish_talk` → S10, in English and Hindi |
+| T12 | Live findings fixed in the prompt: the model followed her profile language (spoke Romanized Marathi in an English session), put a card on "how are you?", wrote advice as a card question, bundled 3 signs into one yes/no, added "not medical advice" disclaimers, and did not always call `finish_talk` after see_today. | — | built (prompt) + app finishes 25 s after an urgent rule result if the model has not |
+| T13 | The model may still over-attribute signs in `red_flag_check.extra_signs` (only ever raises a referral, never lowers). | rules decide | open — watch in review |
+| T14 | S13 model note once said "Routine referral level" while the rules said see today. | rules decide | built: the note may not state the level; a note that sounds routine on see_today/emergency is dropped (`noteContradicts`) |
 
 ## Core screens S1–S13
 

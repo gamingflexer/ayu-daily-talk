@@ -28,7 +28,7 @@ pnpm i && pnpm dev
 - Token server: http://localhost:8787 (`/api/health`, `/api/live-token`).
 - Without `GEMINI_API_KEY` everything runs in **mock mode**: a scripted Ayu emits exactly the same events (captions, tool calls, cards, referral) as the real model.
 
-Other scripts: `pnpm test` (red-flag rules), `pnpm build`, `pnpm start` (serve `dist/` + API in production), `pnpm icons`, `pnpm scan` (gitleaks).
+Other scripts: `pnpm test` (red-flag rules, talk-state tools, doctor summary, server guards), `pnpm build`, `pnpm start` (serve `dist/` + API in production), `pnpm icons`, `pnpm scan` (gitleaks).
 
 ### Demo paths
 
@@ -37,6 +37,7 @@ Other scripts: `pnpm test` (red-flag rules), `pnpm build`, `pnpm start` (serve `
 | `#/` → `#/otp` → `#/today` | S1 phone number → S2 OTP (**any 6 digits work**) → S3 today |
 | `#/talk` | The full talk: Gemini Live if the server has a key, otherwise the mock. Add `?mode=mock` to force mock. |
 | `#/talk?demo=yesno` · `followup` · `danger` · `weak` | S4–S7 as in Figma, clickable through to S10 / S11 |
+| `#/talk?mode=mock&net=weak` | A real (mock) talk that drops to S7 → S8 and keeps what she said |
 | `#/phone` · `#/photo` · `#/next` · `#/fine` · `#/plan` · `#/share` | S8 · S9 · S10 · S11 · S12 · S13 |
 | `#/flows/a/1` · `#/flows/b/1` · `#/flows/c/1` | Flow A (week 9, Meera) · Flow B (week 34, Reena) · Flow C (day 5 after birth, Anita) |
 | `#/asha` | The one ASHA screen: “3 things to check” |
@@ -67,6 +68,8 @@ What was checked against Google’s docs on 12 Nov 2026 ([Live API](https://aist
 | Camera | JPEG frames, at most 1 per second |
 | Transcripts | `inputAudioTranscription` + `outputAudioTranscription` |
 | Tools | function calling; the card tools are `NON_BLOCKING` so the voice keeps going (`LIVE_ASYNC_TOOLS=false` for models without async tools) |
+
+Checked end to end on 13 Nov 2026 in headless Chrome (fake mic from recorded speech, fake camera): picture card → “Not sure” camera turn → the model describes what it sees → danger card → fixed rule → `finish_talk` → S10, in English and Hindi. Screenshots: `docs/screenshots/live-gemini-*.png`.
 
 Smoke-tested on 12 Nov 2026: token from our server → `gemini-3.8-live` → audio + captions → `record_symptom` → `red_flag_check` fired the fixed “headache + face swelling” rule → `see_today`.
 
@@ -110,7 +113,15 @@ flowchart LR
 4. `record_symptom` saves what she said in her own words. `red_flag_check` runs the **fixed rules** and returns the level Ayu must follow. Danger signs she taps go to the rules directly, without passing through the model.
 5. `finish_talk` ends the talk. The app shows S10 (see someone today / call 108) or S11 (all fine) based on the rules.
 
-`ask_single_choice` and the not-sure answer can use a `picture_set` (`feet_swelling`, `baby_skin_colour`, `stool_colour`, `medicine_strip`), so she can pick the picture that looks like hers.
+**“Not sure” is a camera button** (UI rule 1). Tapping it turns the talk into a camera turn: her back camera streams JPEG frames (≤1 fps) to the model with a cue to say in one or two sentences what it sees (never a diagnosis; feet, face-free skin, a medicine strip or a document only), then she confirms or picks a picture. The mock engine plays the same turn with a scripted line.
+
+`update_plan` saves birth/travel-plan items from the talk (S12 shows them as “updated in today’s talk”). When the talk ends (`finish_talk`, ✕, a dropped socket or the 5-minute limit), the app saves a snapshot of the talk; S10 / S11 / S13 read only that snapshot.
+
+**S13 doctor summary** ([`shared/doctor-summary.js`](shared/doctor-summary.js)) is deterministic: the fixed-rule result, the danger signs, her own words, the card answers, what she showed on camera, her BP/Hb/adherence and plan changes, in English for the doctor. If the server has a key, `/api/summary` adds a ≤60-word note written by a small text model from the same facts; the note may not state the referral level, and a note that sounds routine while the rules say “see today” is dropped.
+
+**Weak network → S7 → S8:** `navigator.connection` (2G, RTT > 1.5 s, downlink < 0.15 Mbps), the `offline` event, two slow health pings (live mode) or the Live socket dropping before the talk is done. S8 keypad answers go through the same talk state and fixed rules, so a talk that started on video carries on by phone.
+
+`ask_single_choice` and yes/no cards can use a `picture_set` (`feet_swelling`, `baby_skin_colour`, `stool_colour`, `medicine_strip`), so she can pick the picture that looks like hers.
 
 ## Safety rules in code
 
@@ -134,14 +145,36 @@ shared/            used by server and browser
   live-config.js   model id, system prompt, tool declarations
   talk-state.js    local tool handlers, referral state
   personas.js      mock personas (Sunita, Meera, Reena, Anita)
-server/            Express: token minting, static hosting, phone stub
+  doctor-summary.js  the 2-minute summary for the doctor (S13)
+server/            Express: static hosting, phone stub
+  lib/             API handlers + guards shared with the Vercel functions
+api/               Vercel functions (health, live-token, summary)
 src/live/          audio capture/playback, Gemini engine, mock engine
 src/screens/       S1–S13, flows, ASHA, /call-test, index
 src/i18n/          en.js + hi.js (every UI string)
 docs/screenshots/  screenshots at 360 px
+docs/GAPS.md       what is built vs Figma, and what is still mock
 ```
 
 ## Deploy
+
+### Vercel (PWA + token server as functions)
+
+`vercel.json` builds the PWA (`pnpm build` → `dist/`) and serves `api/health.js`, `api/live-token.js` and `api/summary.js` as Node functions in `bom1` (Mumbai). They share `server/lib/api.js` with the Express server, so both enforce the same rules:
+
+| Env var | Default | |
+|---|---|---|
+| `GEMINI_API_KEY` | — | required for live mode; never sent to the browser |
+| `ALLOWED_ORIGINS` | — | comma list of browser origins allowed to call the POST endpoints. The API's own host is always allowed. Requests **without** an `Origin` header (the React Native app, curl) are allowed and go through the same rate limit and cap. Any other origin gets 403. |
+| `LIVE_TOKEN_DAILY_CAP` | 200 | tokens per UTC day |
+| `LIVE_TOKEN_PER_MIN` | 6 | tokens per IP per minute |
+| `SUMMARY_MODEL` | `gemini-flash-lite-latest` | S13 note |
+| `SUMMARY_DAILY_CAP` / `SUMMARY_PER_MIN` | 300 / 10 | |
+| `GEMINI_LIVE_MODEL`, `LIVE_ASYNC_TOOLS` | `gemini-3.8-live`, true | |
+
+**Limitation:** the rate limit and the daily cap are kept in memory per function instance (a cold start resets them; several warm instances each have their own count). Fine for a demo; use a shared store (e.g. Upstash Redis) before real traffic.
+
+### Others
 
 - **GitHub Pages (static, mock mode)** is deployed by [`.github/workflows/pages.yml`](.github/workflows/pages.yml) on every push to `main`. With no server, the app stays in mock mode.
 - **Token server (live mode)** needs its own host, because GitHub Pages can only serve static files. Run `pnpm build && pnpm start` on any Node host (Cloud Run in `asia-south1` Mumbai, Render, Railway, Fly.io) with `GEMINI_API_KEY` and `ALLOWED_ORIGINS=https://gamingflexer.github.io` set. Then set the repository variable `LIVE_SERVER_URL` to that host’s URL and re-run the Pages workflow. The same server can also serve the PWA itself.

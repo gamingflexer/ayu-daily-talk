@@ -59,6 +59,7 @@ export function TalkScreen({ demo, forceMock, net }) {
   const engineRef = useRef(null);
   const turnRef = useRef({ who: null, done: true });
   const finishedRef = useRef(false);
+  const urgentTimer = useRef(null);
   const camTurnRef = useRef(null);
   camTurnRef.current = camTurn;
 
@@ -95,6 +96,7 @@ export function TalkScreen({ demo, forceMock, net }) {
     })();
     return () => {
       alive = false;
+      clearTimeout(urgentTimer.current);
       off?.();
       engineRef.current?.end();
       engineRef.current = null;
@@ -134,6 +136,11 @@ export function TalkScreen({ demo, forceMock, net }) {
   }
 
   function onEvent(e) {
+    // Dev only: a log the browser tests read (tool calls, cards, referral, finish).
+    if (import.meta.env.DEV && e.type !== 'level' && e.type !== 'caption') {
+      (window.__ayuTalkLog ||= []).push({ t: Date.now(), type: e.type, name: e.name, args: e.args, card: e.card?.kind, level: e.referral?.level, status: e.status, detail: e.detail });
+    }
+    if (import.meta.env.DEV && e.type === 'caption') (window.__ayuCaptions ||= []).push(`${e.who}:${e.text}`);
     switch (e.type) {
       case 'status':
         setStatus(e.status);
@@ -162,6 +169,14 @@ export function TalkScreen({ demo, forceMock, net }) {
         break;
       case 'card':
         setCard(e.card);
+        break;
+      case 'referral':
+        // The rules said see today / call 108: if the model has not finished 25 s later, the app does.
+        if ((e.referral.level === 'see_today' || e.referral.level === 'emergency') && !urgentTimer.current) {
+          urgentTimer.current = setTimeout(() => {
+            if (!finishedRef.current) engineRef.current?.finishLocal('rules');
+          }, 25000);
+        }
         break;
       case 'tool-cancel':
         setCard((c) => (c?.callId && e.ids.includes(c.callId) ? null : c));

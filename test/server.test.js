@@ -110,3 +110,10 @@ test('guards: rate window slides; daily counter resets on a new day; ip from x-f
   assert.equal(takeDaily('d', 1, day1 + 86_400_000), true);
   assert.equal(clientIp({ 'x-forwarded-for': '9.9.9.9, 10.0.0.1' }), '9.9.9.9');
 });
+
+test('summary: a note that contradicts the rules is dropped', async () => {
+  const talk = { signs: ['bleeding'], referral: { level: 'see_today' }, answers: [], symptoms: [] };
+  const out = await handleApi('summary', req({ body: { persona: 'sunita', talk } }), { writeNote: async () => 'Routine follow-up, no urgent concern.' });
+  assert.equal(out.body.note, null);
+  assert.equal(out.body.dropped, 'contradicts referral');
+});
