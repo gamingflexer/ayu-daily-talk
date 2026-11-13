@@ -10,12 +10,13 @@
 //      SUMMARY_DAILY_CAP (300), SUMMARY_PER_MIN (10)
 
 import { GoogleGenAI } from '@google/genai';
-import { buildLiveConfig, DEFAULT_MODEL, API_VERSION } from '../../shared/live-config.js';
+import { buildLiveConfig, DEFAULT_MODEL, API_VERSION, LANG_NAME } from '../../shared/live-config.js';
 import { getPersona } from '../../shared/personas.js';
 import { buildDoctorSummary, noteContradicts } from '../../shared/doctor-summary.js';
 import { checkOrigin, rateLimit, takeDaily, envInt } from './guard.js';
 
-const LANGS = ['en', 'hi', 'mr'];
+// Every app language (shared/live-config.js LANG_NAME); anything else falls back to English.
+const LANGS = Object.keys(LANG_NAME);
 
 export function settings() {
   return {
@@ -133,6 +134,8 @@ export function sanitizeTalk(t) {
       picture: s(x?.picture, 20),
       pictureSet: s(x?.pictureSet, 30),
       via: s(x?.via, 10),
+      symptom: s(x?.symptom, 30),
+      changed: Boolean(x?.changed),
     })),
     photos: arr(t.photos, 6).map((x) => ({ purpose: s(x?.purpose, 20) || 'document', kind: s(x?.kind, 10) })),
     plan: t.plan && typeof t.plan === 'object' ? Object.fromEntries(Object.entries(t.plan).slice(0, 6).map(([k, v]) => [s(k, 20), { value: s(v?.value, 120) || '', ready: Boolean(v?.ready) }])) : {},

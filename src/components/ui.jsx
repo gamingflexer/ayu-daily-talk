@@ -1,7 +1,7 @@
 import logoUrl from '../assets/figma/logo-ayu-tm.svg';
 import chevronUrl from '../assets/figma/icon-chevron.svg';
 import profileUrl from '../assets/figma/icon-profile.svg';
-import { useT } from '../i18n/index.jsx';
+import { useT, LANG_LABELS } from '../i18n/index.jsx';
 
 /** Heart + "Ayu" + ™ — the only brand mark. */
 export function Logo({ width = 82.8 }) {
@@ -13,11 +13,16 @@ export function Screen({ dark = false, children, className = '' }) {
 }
 
 export function Header({ name, onSwitch, onProfile }) {
-  const { t } = useT();
+  const { t, lang } = useT();
   return (
     <header className="header">
       <Logo />
       <div className="header-right">
+        {onSwitch && (
+          <button className="lang-pill" onClick={onSwitch} lang={lang} aria-label={t('header.language', { lang: LANG_LABELS[lang] })}>
+            {LANG_LABELS[lang]}
+          </button>
+        )}
         <button className="profile-pill" onClick={onSwitch} aria-label={t('header.switch', { name })}>
           {name}
           <span className="chev">

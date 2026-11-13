@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { I18nProvider, useT } from './i18n/index.jsx';
+import { I18nProvider, useT, LANG_LABELS, LANG_ORDER } from './i18n/index.jsx';
 import { AppProvider, useApp } from './state.jsx';
 import { useRoute, href, go } from './router.js';
 import { EntryScreen, OtpScreen } from './screens/Onboarding.jsx';
@@ -60,7 +60,7 @@ function Shell() {
   else if (path === '/today') screen = <TodayScreen openMenu={openMenu} />;
   else if (path === '/talk') {
     dark = true;
-    screen = <TalkScreen key={query.demo || 'live'} demo={query.demo} forceMock={query.mode === 'mock'} net={query.net} />;
+    screen = <TalkScreen key={query.demo || 'live'} demo={query.demo} forceMock={query.mode === 'mock'} net={query.net} drop={query.drop === '1'} />;
   } else if (path === '/phone') {
     dark = true;
     screen = <PhoneScreen fromTalk={query.from === 'talk'} />;
@@ -161,12 +161,11 @@ function Menu({ close }) {
         </div>
         <h2 className="eyebrow">{t('common.language')}</h2>
         <div className="chips">
-          <Chip on={lang === 'hi'} onClick={() => setLang('hi')}>
-            हिंदी
-          </Chip>
-          <Chip on={lang === 'en'} onClick={() => setLang('en')}>
-            English
-          </Chip>
+          {LANG_ORDER.map((l) => (
+            <Chip key={l} lang={l} on={lang === l} onClick={() => setLang(l)}>
+              {LANG_LABELS[l]}
+            </Chip>
+          ))}
         </div>
         <h2 className="eyebrow">{t('menu.demo')}</h2>
         <div className="chips">

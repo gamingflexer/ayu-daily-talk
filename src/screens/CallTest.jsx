@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { QuestionCard, HerVideo } from '../components/call.jsx';
 import { Logo } from '../components/ui.jsx';
-import { useT } from '../i18n/index.jsx';
+import { useT, LANG_LABELS, LANG_ORDER } from '../i18n/index.jsx';
 import { href } from '../router.js';
 import { PERSONA_IDS, getPersona } from '../../shared/personas.js';
 import { mentionsStoppingMedicine } from '../../shared/red-flags.js';
@@ -56,6 +56,9 @@ export function CallTest() {
         break;
       case 'turn-complete':
         turnOpen.current = false;
+        break;
+      case 'card-missing':
+        addLog(`guard: question without a card → nudged ("${e.question}")`);
         break;
       case 'tool':
         addLog(`tool ${e.name}(${JSON.stringify(e.args)}) → ${JSON.stringify(e.result)}`);
@@ -151,8 +154,11 @@ export function CallTest() {
             ))}
           </select>
           <select value={lang} onChange={(e) => setLang(e.target.value)} aria-label={t('common.language')} disabled={running}>
-            <option value="en">English</option>
-            <option value="hi">हिंदी</option>
+            {LANG_ORDER.map((l) => (
+              <option key={l} value={l}>
+                {LANG_LABELS[l]}
+              </option>
+            ))}
           </select>
           <select value={want} onChange={(e) => setWant(e.target.value)} aria-label={t('ct.mode')} disabled={running}>
             <option value="auto">{t('ct.auto')}</option>
@@ -189,8 +195,8 @@ export function CallTest() {
               <QuestionCard
                 key={card.id}
                 card={card}
-                onAnswer={(a) => {
-                  engine.current?.answer(card.id, a, { yes: t('common.yes'), no: t('common.no'), not_sure: t('common.notSure') });
+                onAnswer={(a, meta) => {
+                  engine.current?.answer(card.id, a, { yes: t('common.yes'), no: t('common.no'), not_sure: t('common.notSure') }, meta);
                   addLog(`tapped: ${JSON.stringify(a)}`);
                   setCard(null);
                 }}

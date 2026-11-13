@@ -14,7 +14,11 @@ This repo is an **open-source (MIT) public demo for research (UNICEF FemTech cha
 | **Weak network → call (S7)** | **Phone-call mode (S8)** | **Pick the picture** | **Birth & travel plan (S12)** | **Share with doctor (S13)** |
 | ![](docs/screenshots/s07-weak-network.png) | ![](docs/screenshots/s08-phone-call.png) | ![](docs/screenshots/talk-pick-the-picture.png) | ![](docs/screenshots/s12-birth-plan.png) | ![](docs/screenshots/s13-share-with-doctor.png) |
 
-More in [`docs/screenshots/`](docs/screenshots) (all taken at 360 px wide), including Hindi (`hi-*`), the flows (`flow-*`), the ASHA screen and `/call-test`.
+| **Her camera on talk start** | **Ayu is thinking** | **Severity with definitions** | **Body map** | **Marathi talk** |
+|---|---|---|---|---|
+| ![](docs/screenshots/talk-state-speaking.png) | ![](docs/screenshots/live-state-thinking.png) | ![](docs/screenshots/talk-card-severity.png) | ![](docs/screenshots/talk-pending-body.png) | ![](docs/screenshots/mr-talk-card-body.png) |
+
+More in [`docs/screenshots/`](docs/screenshots), including Hindi (`hi-*`), Marathi (`mr-*`), every talk state (`talk-state-*`), every card type (`talk-card-*`), live Gemini runs (`live-*`, `en3-live-*`, `mr-live-*`), the flows (`flow-*`), the ASHA screen and `/call-test`. Screenshots from 13 Nov on are 390 px wide.
 
 ## Run it
 
@@ -36,7 +40,8 @@ Other scripts: `pnpm test` (red-flag rules, talk-state tools, doctor summary, se
 |---|---|
 | `#/` → `#/otp` → `#/today` | S1 phone number → S2 OTP (**any 6 digits work**) → S3 today |
 | `#/talk` | The full talk: Gemini Live if the server has a key, otherwise the mock. Add `?mode=mock` to force mock. |
-| `#/talk?demo=yesno` · `followup` · `danger` · `weak` | S4–S7 as in Figma, clickable through to S10 / S11 |
+| `#/talk?demo=yesno` · `followup` · `body` · `duration` · `severity` · `search` · `danger` · `weak` | S4–S7 and the answer types, clickable through to S10 / S11 |
+| `#/talk?mode=mock&drop=1` | A mock talk whose connection drops and comes back (the reconnecting state) |
 | `#/talk?mode=mock&net=weak` | A real (mock) talk that drops to S7 → S8 and keeps what she said |
 | `#/phone` · `#/photo` · `#/next` · `#/fine` · `#/plan` · `#/share` | S8 · S9 · S10 · S11 · S12 · S13 |
 | `#/flows/a/1` · `#/flows/b/1` · `#/flows/c/1` | Flow A (week 9, Meera) · Flow B (week 34, Reena) · Flow C (day 5 after birth, Anita) |
@@ -44,7 +49,9 @@ Other scripts: `pnpm test` (red-flag rules, talk-state tools, doctor summary, se
 | `#/call-test` | Connect, talk, and watch the transcript, tool calls and the fixed-rule referral |
 | `#/screens` | Index of everything |
 
-Tap the name pill (“Sunita”) to switch persona (Sunita, Meera, Reena, Anita) or language (English / हिंदी).
+Tap the name pill (“Sunita”) or the language pill next to it to switch persona (Sunita, Meera, Reena, Anita) or language. S1 has the language chips too.
+
+**Languages:** English, हिंदी, मराठी, বাংলা, தமிழ், తెలుగు, ಕನ್ನಡ, ગુજરાતી, മലയാളം — every UI string, the mock Ayu's lines, and Gemini's speech and card text (in that language's own script). **All non-English text is a draft translation for native review.** `pnpm test` checks that every language has every key (`test/i18n.test.js`); `node scripts/check-lang.mjs mr` lists what one language is missing.
 
 ## Install it on a phone
 
@@ -105,9 +112,17 @@ flowchart LR
   PSTN["PSTN → Indian SIP trunk → ASR → LLM → TTS<br/>(design only)"] -.-> PH
 ```
 
+### Starting the talk: mic + her camera, one prompt
+
+The talk starts from her tap (“Start talking” on Today, or “Start today’s talk” on a talk opened directly), because iOS Safari only allows `getUserMedia` inside a user gesture. That one tap asks for the microphone **and the front camera** together (`src/live/media.js`); her live video fills the tile (only her, zoomed in), and frames go to the model at ≤1 fps only while a camera is on. If she refuses the camera or has none, the talk goes on voice-only with “Camera off — Ayu can only hear you” and a button to try again. A card that needs a look (a picture set, “Show on camera”, “Not sure”) switches to the back camera by itself and back to the front afterwards; `ask_photo` opens the photo screen by itself. If the browser blocks that (no gesture, permission withdrawn), the tile shows one big “Tap to turn on camera” button. The woman illustration is only on the static screens map, labelled “Illustration”.
+
+### Talk states
+
+The state chip on the video always says what is happening (`src/live/phase.js`, from engine events only): getting ready (permissions) → connecting → **Ayu is speaking** (bars follow her voice) ⇄ **Ayu is listening** (a ring follows the mic) → **Ayu is thinking…** (after her words stop or she taps, until the first reply audio or card) → **Checking with the safety rules…** (red_flag_check) → **Saving today’s talk…**, plus reconnecting (the socket dropped; the Gemini engine gets a new token and resumes twice at most), paused, ended and an error with “Start again”. The tapped answer keeps a spinner until Ayu replies. Other waits have their own state: OTP check (S2), “Getting today ready…” (S3), calling (S8), camera starting / reading / sending (S9), and the doctor note skeleton (S13).
+
 ### How a question card works
 
-1. Ayu (the model) asks out loud and calls `ask_yes_no`, `ask_single_choice`, `ask_multi_choice` or `ask_photo`.
+1. Ayu (the model) asks out loud and calls a card tool: `ask_yes_no`, `ask_single_choice`, `ask_multi_choice`, `ask_duration` (since-when chips), `ask_severity` (mild / moderate / severe with a one-line definition each), `ask_body_map` (tap the area on a simple outline), `ask_symptom_search` (type-ahead over a fixed local symptom list in her language) or `ask_photo`. Every card has “What does this mean?” (an explanation the model sends with the card) and “← Previous” to change the last answer (the model is told; the signs that answer gave are re-derived). Greetings, open questions and confirming what she said are voice only. A talk is many short questions (10–40), one card at a time; if Ayu asks a closed question aloud and no card comes within 3.5 s, the app nudges the model once to show it (`card-missing` in the log).
 2. The browser runs the tool locally (`shared/talk-state.js`), shows the card and answers the call silently, so Ayu keeps talking.
 3. She taps or just speaks. A tap is sent back to the model as text (`[She tapped …]`).
 4. `record_symptom` saves what she said in her own words. `red_flag_check` runs the **fixed rules** and returns the level Ayu must follow. Danger signs she taps go to the rules directly, without passing through the model.
@@ -151,7 +166,7 @@ server/            Express: static hosting, phone stub
 api/               Vercel functions (health, live-token, summary)
 src/live/          audio capture/playback, Gemini engine, mock engine
 src/screens/       S1–S13, flows, ASHA, /call-test, index
-src/i18n/          en.js + hi.js (every UI string)
+src/i18n/          en, hi, mr, bn, ta, te, kn, gu, ml (every UI string; keys.js = parity rule)
 docs/screenshots/  screenshots at 360 px
 docs/GAPS.md       what is built vs Figma, and what is still mock
 ```
@@ -190,5 +205,5 @@ docs/GAPS.md       what is built vs Figma, and what is still mock
 - **Brand:** the heart + “Ayu” + ™ mark belongs to Ayu.
 - **Font:** [Inter](https://rsms.me/inter/) (SIL Open Font License), one self-hosted variable woff2 file (Latin subset). Hindi text uses the phone’s own Devanagari font.
 - **Pictures:** the woman on the call screens and the pick-the-picture tiles are illustrations; no real person is shown. Licensed real photos (medicine strip, skin, swelling, stool colours) will replace the tiles, each with a credit here.
-- **Hindi:** a draft translation that needs review by a native speaker. Reviewer notes are in English only.
+- **Translations:** Hindi, Marathi, Bengali, Tamil, Telugu, Kannada, Gujarati and Malayalam are draft translations that need review by a native speaker. Reviewer notes (design notes, the screens index, `/call-test`, flow captions) are in English only.
 - **Licence:** the code is open source under the [MIT licence](LICENSE). The Ayu name and the heart + “Ayu” + ™ mark are not covered by it and stay trademarks of Ayu.

@@ -51,8 +51,15 @@ export function noteContradicts(level, note = '') {
 
 const yesNo = (a) => (a === 'yes' ? 'yes' : a === 'no' ? 'no' : a === 'not_sure' ? 'not sure' : a);
 
+const CODES = {
+  duration: { lt_day: 'less than a day', day_week: '1 day–1 week', week_month: '1 week–1 month', gt_month: 'more than a month', dont_know: 'does not know' },
+  severity: { mild: 'mild (can do daily work)', moderate: 'moderate (daily work hard)', severe: 'SEVERE (cannot do anything)', dont_know: 'does not know' },
+};
+
 function answerLine(a) {
-  let ans = Array.isArray(a.answer) ? a.answer.join(', ') || 'none of these' : yesNo(a.answer);
+  let ans = Array.isArray(a.answer) ? a.answer.join(', ') || 'none of these' : CODES[a.kind]?.[a.answer] || yesNo(a.answer);
+  if (a.kind === 'body') ans = `points to: ${String(a.answer).replace(/_/g, ' ')}`;
+  if (a.kind === 'search') ans = a.symptom ? a.symptom.replace(/_/g, ' ') : `“${a.answer}” (her words)`;
   if (a.picture && a.pictureSet && PICTURE[a.pictureSet]?.[a.picture]) {
     ans = `${ans} (picked picture: ${PICTURE[a.pictureSet][a.picture]})`;
   }
@@ -96,7 +103,7 @@ export function buildDoctorSummary({ persona: p, talk, now = Date.now() }) {
       const bits = [s.since, s.severity && s.severity !== 'unknown' ? s.severity : null].filter(Boolean).join(', ');
       lines.push(`${s.sign && s.sign !== 'other' ? 'warn' : 'dot'}|“${s.her_words}”${bits ? ` (${bits})` : ''}`);
     }
-    const answers = (talk.answers || []).filter((a) => a.kind !== 'photo');
+    const answers = (talk.answers || []).filter((a) => a.kind !== 'photo' && !a.changed);
     for (const a of answers.slice(-MAX_ANSWERS)) lines.push(`dot|${answerLine(a)}`);
     if (answers.length > MAX_ANSWERS) lines.unshift(`dot|${answers.length - MAX_ANSWERS} earlier answers not shown`);
     push('words', 'What she said', lines);

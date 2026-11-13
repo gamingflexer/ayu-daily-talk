@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Screen, PhoneIcon } from '../components/ui.jsx';
-import { CallControls } from '../components/call.jsx';
+import { CallControls, Spinner } from '../components/call.jsx';
 import { useT } from '../i18n/index.jsx';
 import { useApp } from '../state.jsx';
 import { go } from '../router.js';
@@ -36,16 +36,22 @@ export function PhoneScreen({ fromTalk = false }) {
   const [q, setQ] = useState(0);
   const [pressed, setPressed] = useState(null);
   const [paused, setPaused] = useState(false);
+  // MOCK: the bridge is a stub, so "connecting" is a short fixed wait; a real bridge would end it on answer.
+  const [connecting, setConnecting] = useState(true);
+  useEffect(() => {
+    const id = setTimeout(() => setConnecting(false), 1600);
+    return () => clearTimeout(id);
+  }, []);
   // One talk state for the whole call (mutable, like the engines' state).
   const [talkState] = useState(() => restoreTalkState(persona, fromTalk && lastTalk?.partial ? lastTalk : null));
   const questions = QUESTIONS[persona.stage === 'postnatal' ? 'postnatal' : 'pregnant'];
   const continued = fromTalk && lastTalk?.partial && lastTalk.persona === persona.id;
 
   useEffect(() => {
-    if (paused) return;
+    if (paused || connecting) return;
     const id = setInterval(() => setSecs((s) => s + 1), 1000);
     return () => clearInterval(id);
-  }, [paused]);
+  }, [paused, connecting]);
 
   const press = (n) => {
     if (pressed) return;
@@ -71,7 +77,7 @@ export function PhoneScreen({ fromTalk = false }) {
 
   return (
     <Screen dark>
-      <div className="ring" aria-hidden="true">
+      <div className={`ring ${connecting ? 'calling' : ''}`} aria-hidden="true">
         <div>
           <PhoneIcon size={44} />
         </div>
@@ -81,13 +87,19 @@ export function PhoneScreen({ fromTalk = false }) {
           {t('s8.title')}
         </h1>
         <p className="hint" style={{ fontSize: 15 }}>
-          {t('s8.meta', { time, language: persona.language })}
+          {connecting ? (
+            <span className="busy-line light" role="status" style={{ justifyContent: 'center' }}>
+              <Spinner light /> {t('s8.connecting')}
+            </span>
+          ) : (
+            t('s8.meta', { time, language: persona.language })
+          )}
         </p>
         <p className="stub" style={{ margin: '4px 0 6px' }}>
           {continued ? t('s8.continued') : t('s8.stub')}
         </p>
       </div>
-      <div className="call-body">
+      <div className="call-body" style={connecting ? { opacity: 0.35, pointerEvents: 'none' } : undefined}>
         <div className="dark-card">
           <p style={{ color: '#fff', fontSize: 15 }}>
             <strong>“{t(questions[q].key)}”</strong>

@@ -165,8 +165,8 @@ test('Hindi: prompt tells the model to speak Hindi and write cards in Hindi; ope
   const cfg = buildLiveConfig({ persona: getPersona('reena'), lang: 'hi' });
   assert.match(cfg.systemInstruction, /She chose Hindi in the app. Speak Hindi/);
   assert.match(cfg.systemInstruction, /in Devanagari script/);
-  assert.match(cfg.systemInstruction, /Open questions .* have NO card/);
-  assert.match(cfg.systemInstruction, /Write every card's question and options in the language you are speaking/);
+  assert.match(cfg.systemInstruction, /Voice only, NO card: greetings, open questions/);
+  assert.match(cfg.systemInstruction, /Write every card's question, options and explanation in Hindi/);
   assert.match(openingNudge('hi'), /in Hindi/);
   const names = cfg.tools[0].functionDeclarations.map((f) => f.name);
   assert.ok(names.includes('update_plan'));

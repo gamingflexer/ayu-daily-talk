@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Screen, Logo, Button, Chip, Card } from '../components/ui.jsx';
-import { useT, LANG_LABELS } from '../i18n/index.jsx';
+import { useT, LANG_LABELS, LANG_ORDER } from '../i18n/index.jsx';
+import { Spinner } from '../components/call.jsx';
 import { useApp } from '../state.jsx';
 import { go, href } from '../router.js';
 
@@ -10,7 +11,8 @@ export function EntryScreen() {
   const { update } = useApp();
   const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
-  const [soon, setSoon] = useState(false);
+  // Hindi, Marathi, English first; "+ 6 more" opens the rest (and stays open if one of them is picked).
+  const [more, setMore] = useState(() => !['hi', 'mr', 'en'].includes(lang));
 
   const submit = (e) => {
     e.preventDefault();
@@ -44,20 +46,16 @@ export function EntryScreen() {
           </label>
           {error && <p className="error">{error}</p>}
           <div className="chips" role="group" aria-label={t('common.language')}>
-            <Chip on={lang === 'hi'} type="button" onClick={() => setLang('hi')}>
-              {LANG_LABELS.hi}
-            </Chip>
-            <Chip type="button" onClick={() => setSoon(true)}>
-              {LANG_LABELS.mr}
-            </Chip>
-            <Chip on={lang === 'en'} type="button" onClick={() => setLang('en')}>
-              {LANG_LABELS.en}
-            </Chip>
-            <Chip type="button" onClick={() => setSoon(true)}>
-              {t('s1.moreLangs')}
+            {LANG_ORDER.slice(0, more ? LANG_ORDER.length : 3).map((l) => (
+              <Chip key={l} on={lang === l} type="button" lang={l} onClick={() => setLang(l)}>
+                {LANG_LABELS[l]}
+              </Chip>
+            ))}
+            <Chip type="button" onClick={() => setMore((v) => !v)} aria-expanded={more}>
+              {more ? t('s1.fewerLangs') : t('s1.moreLangs')}
             </Chip>
           </div>
-          {soon && <p className="small">{t('s1.soon')}</p>}
+          <p className="small">{t('s1.langHint')}</p>
         </div>
         <div className="foot">
           <Button type="submit">{t('s1.cta')}</Button>
@@ -77,6 +75,7 @@ export function OtpScreen() {
   const { phone } = useApp();
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [left, setLeft] = useState(24);
+  const [verifying, setVerifying] = useState(false);
   const refs = useRef([]);
   const masked = phone ? `${phone.slice(0, 2)}•• ••• ${phone.slice(-3)}` : '98•• ••• 210';
 
@@ -107,7 +106,11 @@ export function OtpScreen() {
     if (next.every(Boolean)) done(next);
   };
 
-  const done = () => setTimeout(() => go('/today'), 250);
+  // Demo: any 6 digits work. The check is shown as its own state (rule 4), then today opens.
+  const done = () => {
+    setVerifying(true);
+    setTimeout(() => go('/today'), 900);
+  };
 
   return (
     <Screen>
@@ -124,6 +127,7 @@ export function OtpScreen() {
               autoComplete={i === 0 ? 'one-time-code' : 'off'}
               aria-label={t('s2.digit', { n: i + 1 })}
               value={d}
+              disabled={verifying}
               onChange={(e) => set(i, e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Backspace' && !code[i] && i > 0) refs.current[i - 1]?.focus();
@@ -131,6 +135,11 @@ export function OtpScreen() {
             />
           ))}
         </div>
+        {verifying && (
+          <p className="busy-line" role="status">
+            <Spinner /> {t('s2.verifying')}
+          </p>
+        )}
         <p className="lead" style={{ fontSize: 14 }}>
           {t('s2.lead')}
         </p>

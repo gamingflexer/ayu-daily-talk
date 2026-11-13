@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Screen, TextLink, Button } from '../components/ui.jsx';
 import { useT } from '../i18n/index.jsx';
 import { PICTURES } from '../components/pictures.jsx';
+import { Spinner } from '../components/call.jsx';
 
 // S9 · A photo only when it helps: the medicine strip, a face-free patch of
 // skin, her feet, or a document. Never her face or private body parts.
@@ -54,7 +55,12 @@ export function PhotoView({ purpose = 'medicine_strip', onPhoto, onSkip, mockRea
       b64 = c.toDataURL('image/jpeg', 0.75).split(',')[1];
     }
     stream?.getTracks().forEach((x) => x.stop());
-    if (!mockRead) return onPhoto?.(b64);
+    if (!mockRead) {
+      // Live: the photo goes to Ayu; show that it is on its way (rule 4) before returning to the talk.
+      setPhase('sending');
+      setTimeout(() => onPhoto?.(b64), 700);
+      return;
+    }
     setPhase('reading');
     setTimeout(() => setPhase('confirm'), 1200);
     lastRef.current = b64;
@@ -67,8 +73,10 @@ export function PhotoView({ purpose = 'medicine_strip', onPhoto, onSkip, mockRea
           <div style={{ width: '70%' }}>{PICTURES.medicine_strip[0].art}</div>
         </div>
         <div className="call-body" style={{ paddingBottom: 24 }}>
-          {phase === 'reading' ? (
-            <h2 className="question">{t('s9.reading')}</h2>
+          {phase === 'reading' || phase === 'sending' ? (
+            <h2 className="question busy-line light" role="status">
+              <Spinner light /> {phase === 'sending' ? t('s9.sending') : t('s9.reading')}
+            </h2>
           ) : purpose === 'medicine_strip' ? (
             <>
               <h2 className="question">{t('s9.confirmQ')}</h2>
@@ -108,7 +116,17 @@ export function PhotoView({ purpose = 'medicine_strip', onPhoto, onSkip, mockRea
         <div className="frame-box">
           {!stream && purpose === 'medicine_strip' && <div style={{ width: '82%' }}>{PICTURES.medicine_strip[0].art}</div>}
         </div>
-        <p className="frame-label">{noCam ? t('s9.noCamera') : t(copy.frame)}</p>
+        <p className="frame-label">
+          {noCam ? (
+            t('s9.noCamera')
+          ) : stream ? (
+            t(copy.frame)
+          ) : (
+            <span className="busy-line light" role="status">
+              <Spinner light /> {t('s9.starting')}
+            </span>
+          )}
+        </p>
       </div>
       <div className="shutter-row">
         <TextLink onClick={onSkip}>{purpose === 'medicine_strip' ? t('s9.skip') : t('s9.skipLater')}</TextLink>

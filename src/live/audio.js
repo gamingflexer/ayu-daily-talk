@@ -41,6 +41,8 @@ class PcmCapture extends AudioWorkletProcessor {
 registerProcessor('pcm-capture', PcmCapture);
 `;
 
+export const MIC_CONSTRAINTS = { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true };
+
 export function bytesToBase64(buffer) {
   const bytes = new Uint8Array(buffer);
   let bin = '';
@@ -59,12 +61,14 @@ export function base64ToBytes(b64) {
 
 /**
  * Start the microphone.
- * @param {{targetRate?: number, onChunk: (b64: string) => void, onLevel?: (rms: number) => void}} opts
+ * @param {{targetRate?: number, onChunk: (b64: string) => void, onLevel?: (rms: number) => void, stream?: MediaStream}} opts
+ *   stream: an audio stream already granted from her tap (src/live/media.js); otherwise the mic is asked for here.
  */
-export async function startMic({ targetRate = 16000, onChunk, onLevel }) {
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-  });
+export async function startMic({ targetRate = 16000, onChunk, onLevel, stream: given }) {
+  const stream =
+    given && given.getAudioTracks().some((t) => t.readyState === 'live')
+      ? given
+      : await navigator.mediaDevices.getUserMedia({ audio: MIC_CONSTRAINTS });
   const ctx = new AudioContext();
   const url = URL.createObjectURL(new Blob([WORKLET], { type: 'application/javascript' }));
   await ctx.audioWorklet.addModule(url);
@@ -96,11 +100,36 @@ export async function startMic({ targetRate = 16000, onChunk, onLevel }) {
   };
 }
 
-/** Plays 16-bit PCM chunks back to back. */
-export function createPlayer(sampleRate = 24000) {
+/**
+ * Plays 16-bit PCM chunks back to back.
+ * onSpeaking(on) fires when Ayu starts / stops sounding; onLevel(rms) ~10×/s while she speaks (the voice orb).
+ */
+export function createPlayer(sampleRate = 24000, { onSpeaking, onLevel } = {}) {
   const ctx = new AudioContext({ sampleRate });
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 512;
+  analyser.connect(ctx.destination);
+  const tbuf = new Float32Array(analyser.fftSize);
   let at = 0;
+  let was = false;
+  let meter = null;
   const live = new Set();
+  const changed = () => {
+    const now = live.size > 0;
+    if (now === was) return;
+    was = now;
+    onSpeaking?.(now);
+    clearInterval(meter);
+    meter = null;
+    if (now && onLevel) {
+      meter = setInterval(() => {
+        analyser.getFloatTimeDomainData(tbuf);
+        let sum = 0;
+        for (const v of tbuf) sum += v * v;
+        onLevel(Math.sqrt(sum / tbuf.length));
+      }, 100);
+    } else onLevel?.(0);
+  };
   return {
     play(b64) {
       if (ctx.state === 'suspended') ctx.resume();
@@ -111,12 +140,16 @@ export function createPlayer(sampleRate = 24000) {
       for (let i = 0; i < pcm.length; i++) ch[i] = pcm[i] / 0x8000;
       const node = ctx.createBufferSource();
       node.buffer = buf;
-      node.connect(ctx.destination);
+      node.connect(analyser);
       at = Math.max(at, ctx.currentTime + 0.03);
       node.start(at);
       at += buf.duration;
       live.add(node);
-      node.onended = () => live.delete(node);
+      changed();
+      node.onended = () => {
+        live.delete(node);
+        changed();
+      };
     },
     /** She started talking: drop what Ayu was saying. */
     stop() {
@@ -129,12 +162,14 @@ export function createPlayer(sampleRate = 24000) {
       }
       live.clear();
       at = 0;
+      changed();
     },
     get speaking() {
       return live.size > 0;
     },
     close() {
       this.stop();
+      clearInterval(meter);
       return ctx.close().catch(() => {});
     },
   };

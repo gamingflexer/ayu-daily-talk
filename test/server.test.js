@@ -117,3 +117,21 @@ test('summary: a note that contradicts the rules is dropped', async () => {
   assert.equal(out.body.note, null);
   assert.equal(out.body.dropped, 'contradicts referral');
 });
+
+test('live-token accepts every app language and falls back to English for others', async () => {
+  const { handleApi } = await import('../server/lib/api.js');
+  const { LANG_NAME } = await import('../shared/live-config.js');
+  process.env.GEMINI_API_KEY = 'test-key';
+  process.env.LIVE_TOKEN_PER_MIN = '1000';
+  for (const lang of [...Object.keys(LANG_NAME), 'xx']) {
+    let seen = null;
+    const res = await handleApi(
+      'live-token',
+      { method: 'POST', headers: {}, body: { persona: 'sunita', lang }, ip: `9.9.9.${lang.length}` },
+      { mintToken: async ({ config }) => ((seen = config), 'tok') },
+    );
+    assert.equal(res.status, 200, lang);
+    const want = LANG_NAME[lang] || 'English';
+    assert.match(seen.systemInstruction, new RegExp(`She chose ${want} in the app`), lang);
+  }
+});

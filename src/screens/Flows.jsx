@@ -61,7 +61,7 @@ export function FlowPlayer({ id, step }) {
     const opts = t(k('options'));
     return (
       <Screen dark>
-        <HerVideo height={s.options > 3 ? 150 : 200} pill={t(k('pill'))} />
+        <HerVideo illustration height={s.options > 3 ? 150 : 200} pill={t(k('pill'))} />
         {s.herWords && <p className="her-words">“{t(k('herWords'))}”</p>}
         <div className="call-body">
           <h2 className="question">{t(k('question'))}</h2>
@@ -108,7 +108,7 @@ export function FlowPlayer({ id, step }) {
   if (s.kind === 'network') {
     return (
       <Screen dark>
-        <HerVideo height={420} pill={t(k('pill'))} live={false}>
+        <HerVideo illustration height={420} pill={t(k('pill'))} live={false}>
           <div className="sheet">
             <h3>{t('s7.title')}</h3>
             <p>{t(k('body'))}</p>

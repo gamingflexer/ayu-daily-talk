@@ -20,6 +20,8 @@ export const SIGNS = {
   fluid_leak: { group: 'pregnancy' },
   reduced_fetal_movement: { group: 'pregnancy' },
   severe_abdominal_pain: { group: 'pregnancy' },
+  // tapped on the body map (lower belly) in pregnancy; strong pain there becomes severe_abdominal_pain
+  lower_belly_pain: { group: 'pregnancy' },
   fever: { group: 'any' },
   convulsions: { group: 'any' },
   breathlessness: { group: 'any' },
@@ -110,6 +112,7 @@ export function evaluate({ signs = [], weeks, daysAfterBirth } = {}) {
 
   if (set.has('very_low_mood')) hit('watch', 'very_low_mood', 'mood:check_again');
   if (set.has('swelling_feet') && level === 'none') hit('watch', 'swelling_feet', 'watch:swelling_feet');
+  if (set.has('lower_belly_pain') && level === 'none') hit('watch', 'lower_belly_pain', 'watch:lower_belly_pain');
 
   // Jaundice in the first 24 hours of life is always urgent.
   if (set.has('baby_yellow_skin') && daysAfterBirth === 0) {

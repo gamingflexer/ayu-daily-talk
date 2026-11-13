@@ -24,13 +24,18 @@ Status: **built** = done in this round (see the commit log), **design-only** = s
 | T11 | Real Gemini Live end to end. | — | built + checked 13 Nov in headless Chrome with a fake mic/camera (7 short sessions): picture card via `ask_yes_no`, camera turn ("I can see your feet and ankles look a bit puffy"), `record_symptom` → `red_flag_check` → `finish_talk` → S10, in English and Hindi |
 | T12 | Live findings fixed in the prompt: the model followed her profile language (spoke Romanized Marathi in an English session), put a card on "how are you?", wrote advice as a card question, bundled 3 signs into one yes/no, added "not medical advice" disclaimers, and did not always call `finish_talk` after see_today. | — | built (prompt) + app finishes 25 s after an urgent rule result if the model has not |
 | T13 | The model may still over-attribute signs in `red_flag_check.extra_signs` (only ever raises a referral, never lowers). | rules decide | open — watch in review |
+| T15 | Om (13 Nov): the talk showed the illustration until a tap on the camera button, and the tile shrank to a strip under cards. | UI rule: only her, zoomed in | built: mic + front camera from one tap, full-bleed video, cards as a sheet over it, voice-only fallback line, auto back camera for picture cards |
+| T16 | Om (13 Nov): only English and Hindi. | — | built: mr, bn, ta, te, kn, gu, ml UI + prompt + mock (drafts for native review); token server accepts all nine |
+| T17 | Om (13 Nov): no state while Ayu is thinking, etc. | rule 4 | built: state chip from engine events (`src/live/phase.js`), spinner on the tapped answer, reconnect, waits on S2/S3/S8/S9/S13 |
+| T18 | Om (13 Nov, after Ada): more answer types and depth, not every question a card. | — | built: duration, severity, body map, symptom search, "What does this mean?", "Previous", one card at a time, missing-card nudge; no ranked conditions |
+| T19 | The model sometimes still shows a card without saying the question aloud, and once added a "not medical advice" line (live run 13 Nov). | — | open — prompt tightened; watch in review |
 | T14 | S13 model note once said "Routine referral level" while the rules said see today. | rules decide | built: the note may not state the level; a note that sounds routine on see_today/emergency is dropped (`noteContradicts`) |
 
 ## Core screens S1–S13
 
 | Screen | Figma vs app | What is mock | Status |
 |---|---|---|---|
-| S1 Web entry | Matches (language chips, +6 more, one action low). Figma has मराठी chip; app says "more languages coming". | OTP is not sent | design-only |
+| S1 Web entry | Matches (language chips, +6 more, one action low). All nine languages work now. | OTP is not sent | built (languages) |
 | S2 OTP | Matches. | Any 6 digits work | design-only |
 | S3 Today | Matches. Journey lines are persona text, not updated from talks. | journey | open (journey from talks) |
 | S4 yes/no | Pictures missing (T2); "Not sure" → still photo (T1). Figma uses GHMP video frames for her tile — kept out of this public repo; the app shows an illustration. | her video tile | built (T1, T2) |

@@ -5,6 +5,7 @@ import { useApp } from '../state.jsx';
 import { href } from '../router.js';
 import { PLAN_ITEMS } from '../../shared/talk-state.js';
 import { buildDoctorSummary } from '../../shared/doctor-summary.js';
+import { Spinner } from '../components/call.jsx';
 import { checkLive, liveServerUrl } from '../live/server.js';
 
 /**
@@ -160,7 +161,20 @@ export function ShareDoctorScreen({ openMenu }) {
         {(note || loadingNote) && (
           <Card tone="plain">
             <h3>{t('s13.note')}</h3>
-            <p lang="en">{note || t('s13.noteLoading')}</p>
+            {note ? (
+              <p lang="en">{note}</p>
+            ) : (
+              <div role="status">
+                <p className="busy-line">
+                  <Spinner /> {t('s13.noteLoading')}
+                </p>
+                <div className="skeleton" aria-hidden="true">
+                  <i />
+                  <i />
+                  <i style={{ width: '60%' }} />
+                </div>
+              </div>
+            )}
             {note && <p className="small">{t('s13.noteBy')}</p>}
           </Card>
         )}

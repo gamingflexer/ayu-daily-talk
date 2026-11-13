@@ -1167,3 +1167,496 @@ a {
 .checklist li > span:last-child {
   overflow-wrap: anywhere;
 }
+
+/* ---------- Indic scripts: room for vowel marks above and below (Devanagari, Bengali, Tamil, …) ---------- */
+/* Inter (Latin subset) stays first; Indic letters fall through to the phone's own fonts. */
+html[data-script='indic'] body {
+  letter-spacing: 0;
+}
+html[data-script='indic'] :is(.h1, .lead, .small, .card h3, .card p, .question, .answer, .caption, .hint, .sheet p, .checklist li, .eyebrow, .picture, .chip, .btn, .state-chip, .explain p, .sev-text small, .her-words) {
+  line-height: 1.5 !important;
+}
+html[data-script='indic'] .h1 {
+  line-height: 1.38 !important;
+}
+html[data-script='indic'] .eyebrow {
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+.lang-pill {
+  background: var(--pill);
+  border-radius: 999px;
+  padding: 9px 14px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* ---------- The live talk: her video fills the stage; cards are a sheet over it ---------- */
+.screen.talk {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+.talk-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.talk-stage .her-video {
+  position: absolute;
+  inset: 8px 8px 0;
+  margin: 0;
+  height: auto;
+  max-height: none;
+}
+.her-video.fixed {
+  height: var(--video-h, 360px);
+}
+.cam-off {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+  background: radial-gradient(circle at 50% 38%, #4a4656, #2a2733 70%);
+}
+.cam-off.with-caption {
+  justify-content: flex-start;
+  padding-top: 30%;
+}
+.cam-off-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+}
+.cam-retry {
+  padding: 12px 20px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+}
+.cam-tap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: min(280px, 86%);
+  padding: 28px 20px;
+  border-radius: 28px;
+  background: var(--coral-tint);
+  color: var(--coral);
+  font-size: 19px;
+  font-weight: 700;
+}
+.card-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 68%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px var(--pad) 14px;
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(14, 13, 19, 0.95);
+  border-radius: 28px 28px 0 0;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.35);
+}
+.card-sheet.open {
+  display: flex;
+}
+.card-sheet.compact .answer {
+  min-height: 48px;
+  padding: 10px 18px;
+  font-size: 16px;
+}
+.card-sheet .her-words {
+  margin: 0 auto 4px;
+}
+.card-sheet .question {
+  margin: 0;
+}
+.notice {
+  color: #f5b041 !important;
+}
+.start-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 6px;
+}
+.sheet-light {
+  background: #fff;
+  color: var(--ink);
+  border-radius: 24px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.sheet-light h3 {
+  margin: 0;
+  font-size: 18px;
+}
+.sheet-light p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 21px;
+  color: var(--ink-2);
+}
+.sheet-light .link {
+  text-align: left;
+  color: var(--ink-2);
+}
+.idle-row {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.idle-row .sim {
+  text-decoration: underline;
+  text-align: right;
+}
+.her-video .caption {
+  padding-bottom: 54px;
+}
+.saving-line,
+.busy-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.saving-line,
+.busy-line.light {
+  color: rgba(255, 255, 255, 0.75);
+}
+.card.dark .busy-line {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+}
+
+/* State chip: what Ayu is doing now */
+.state-chip {
+  position: absolute;
+  top: 58px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px 8px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  max-width: calc(100% - 32px);
+}
+.state-chip.s-speaking {
+  background: rgba(241, 92, 62, 0.92);
+}
+.state-chip.s-error {
+  background: #b3261e;
+}
+.state-chip.s-reconnecting,
+.state-chip.s-paused {
+  background: rgba(245, 176, 65, 0.95);
+  color: #2a2420;
+}
+.bars {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 18px;
+}
+.bars i {
+  width: 4px;
+  height: 18px;
+  border-radius: 2px;
+  background: #fff;
+  transform-origin: center;
+  transition: transform 0.1s linear;
+}
+.mic-ring {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #3ccf7f;
+  box-shadow: 0 0 0 3px rgba(60, 207, 127, 0.35);
+  transition: transform 0.12s linear;
+}
+.dots {
+  display: flex;
+  gap: 4px;
+}
+.dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+  animation: ayu-dot 1.2s infinite ease-in-out;
+}
+.dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes ayu-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
+}
+.still {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: currentColor;
+}
+.bang {
+  font-weight: 800;
+}
+.spinner {
+  display: inline-block;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(51, 47, 60, 0.2);
+  border-top-color: var(--coral);
+  animation: ayu-spin 0.8s linear infinite;
+}
+.spinner.light {
+  border-color: rgba(255, 255, 255, 0.25);
+  border-top-color: #fff;
+}
+@keyframes ayu-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dots i,
+  .spinner {
+    animation-duration: 2.4s;
+  }
+}
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+.skeleton i {
+  display: block;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--line), #f6f1ed, var(--line));
+  background-size: 200% 100%;
+  animation: ayu-shimmer 1.4s infinite linear;
+}
+@keyframes ayu-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* Cards: explanation, previous, processing pill, new answer types */
+.card-head:empty {
+  display: none;
+}
+.prev-btn {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 4px 0;
+  text-align: left;
+}
+.explain-btn {
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffb4a3;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 2px 0;
+  text-align: left;
+}
+.explain p {
+  margin: 6px 0 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--call-card);
+  font-size: 14px;
+  line-height: 20px;
+  color: rgba(255, 255, 255, 0.85);
+}
+.answer:disabled,
+.picture:disabled {
+  opacity: 0.45;
+}
+.answer.picked,
+.picture.picked,
+.btn.picked {
+  opacity: 1;
+  background: var(--coral);
+  border-color: var(--coral);
+  color: #fff;
+}
+.answer.camera.picked {
+  color: #fff;
+}
+.pill-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.chip-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.answer.chipish {
+  min-height: 52px;
+  padding: 10px 14px;
+  font-size: 15px;
+}
+.answer.quiet {
+  background: transparent;
+  min-height: 46px;
+}
+.answer.sev {
+  min-height: 64px;
+}
+.sev-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sev-text small {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+}
+.answer.sev-severe {
+  border-color: #b3261e;
+}
+.body-map {
+  display: grid;
+  grid-template-columns: 1fr 120px;
+  gap: 10px;
+  align-items: start;
+}
+.body-map svg {
+  width: 100%;
+  max-height: 300px;
+}
+.body-map .area {
+  fill: var(--call-card);
+  stroke: #6f6a7c;
+  stroke-width: 2;
+  cursor: pointer;
+}
+.body-map .area:hover {
+  fill: #3d3a4a;
+}
+.body-map .area.on {
+  fill: var(--coral);
+  stroke: #fff;
+}
+.body-map .area:focus-visible {
+  outline: none;
+  stroke: var(--coral);
+  stroke-width: 4;
+}
+.body-map .side {
+  fill: rgba(255, 255, 255, 0.55);
+  font-size: 11px;
+  font-weight: 600;
+}
+.body-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 40px;
+}
+.body-side .hint {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: #fff;
+}
+.search {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.search-input {
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1.5px solid var(--call-line);
+  background: #fff;
+  color: var(--ink);
+  font-size: 17px;
+}
+.search-input:focus {
+  outline: none;
+  border-color: var(--coral);
+}
+
+/* S8 calling ring */
+.ring.calling {
+  animation: ayu-ring 1.4s infinite ease-out;
+}
+@keyframes ayu-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(241, 92, 62, 0.35);
+  }
+  100% {
+    box-shadow: 0 0 0 30px rgba(241, 92, 62, 0);
+  }
+}
+@media (min-width: 980px) {
+  .screen.talk {
+    height: 844px;
+  }
+}
+.body-map .area:focus:not(:focus-visible) {
+  outline: none;
+}
+.card-sheet .btn {
+  position: sticky;
+  bottom: 0;
+  flex: none;
+  box-shadow: 0 -8px 16px rgba(14, 13, 19, 0.9);
+}
+.card-sheet.compact {
+  max-height: 74%;
+}
