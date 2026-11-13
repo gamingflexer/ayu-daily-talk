@@ -13,6 +13,21 @@ window.addEventListener('beforeinstallprompt', (e) => {
 
 registerSW({ immediate: true });
 
+// After a deploy, a page served from the old cache asks for code chunks that no longer exist
+// (e.g. the Gemini chunk, which is not precached) and the talk stays on "Connecting…".
+// Reload once to pick up the new build; the guard stops a reload loop.
+window.addEventListener('vite:preloadError', (e) => {
+  try {
+    const key = 'ayu-reloaded-for-new-build';
+    if (sessionStorage.getItem(key) === location.href) return;
+    sessionStorage.setItem(key, location.href);
+  } catch {
+    // no storage: still try once
+  }
+  e.preventDefault();
+  location.reload();
+});
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />

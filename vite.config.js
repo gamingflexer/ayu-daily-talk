@@ -44,6 +44,9 @@ export default defineConfig({
         navigateFallback: `${base}index.html`,
         navigateFallbackDenylist: [/^\/api\//],
         cleanupOutdatedCaches: true,
+        // A new build takes over open pages straight away, so old pages don't ask for removed chunks.
+        skipWaiting: true,
+        clientsClaim: true,
       },
     }),
   ],
