@@ -78,7 +78,7 @@ turn or the doctor summary. open (not needed for the demo).
 | Gap | Status |
 |---|---|
 | Token server only as Express; no Vercel functions | built (`api/`, `server/lib/`) |
-| CORS let any origin call `/api/live-token` (only headers were withheld) | built (403 for unknown origins; no-Origin callers allowed through the same rate limit) |
+| CORS let any origin call `/api/live-token` (only headers were withheld) | built (403 for unknown origins). Since 16 Nov 2026 (`6a6edf1`) a POST without an `Origin` header also gets 403, and a token needs the 10-minute signed pass from `/api/health` (`X-Talk-Pass`), so a script can no longer mint Gemini Live sessions. Neither Ayu app calls this endpoint. Still open: a script that loads `/api/health` first gets a pass; the hard limit is the Gemini quota cap in Google Cloud. |
 | No daily cap on minted tokens | built (`LIVE_TOKEN_DAILY_CAP`, per instance) |
 | Rate limit and cap are in memory, per instance | open (needs a shared store, e.g. Upstash, before real traffic) |
 | Phone bridge (`/api/phone`) | stub, 501 |
