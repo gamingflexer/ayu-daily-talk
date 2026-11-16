@@ -187,14 +187,15 @@ docs/GAPS.md       what is built vs Figma, and what is still mock
 | Env var | Default | |
 |---|---|---|
 | `GEMINI_API_KEY` | — | required for live mode; never sent to the browser |
-| `ALLOWED_ORIGINS` | — | comma list of browser origins allowed to call the POST endpoints. The API's own host is always allowed. Requests **without** an `Origin` header (the React Native app, curl) are allowed and go through the same rate limit and cap. Any other origin gets 403. |
+| `ALLOWED_ORIGINS` | — | comma list of browser origins allowed to call the POST endpoints. The API's own host is always allowed. POSTs **without** an `Origin` header (scripts, curl) get 403 (16 Nov 2026). Any other origin gets 403. |
+| `PAGE_PASS_SECRET` | derived from the key | `/api/health` returns a 10-minute signed `pass`; `/api/live-token` needs it in `X-Talk-Pass`, so a token can only be minted right after the page's health call. |
 | `LIVE_TOKEN_DAILY_CAP` | 200 | tokens per UTC day |
 | `LIVE_TOKEN_PER_MIN` | 6 | tokens per IP per minute |
 | `SUMMARY_MODEL` | `gemini-flash-lite-latest` | S13 note |
 | `SUMMARY_DAILY_CAP` / `SUMMARY_PER_MIN` | 300 / 10 | |
 | `GEMINI_LIVE_MODEL`, `LIVE_ASYNC_TOOLS` | `gemini-3.8-live`, true | |
 
-**Limitation:** the rate limit and the daily cap are kept in memory per function instance (a cold start resets them; several warm instances each have their own count). Fine for a demo; use a shared store (e.g. Upstash Redis) before real traffic.
+**Limitation:** the rate limit and the daily cap are kept in memory per function instance (a cold start resets them; several warm instances each have their own count), and a determined script can still load `/api/health` first. The hard ceiling is a quota cap on the Gemini API in Google Cloud (project `ayu-local-projects`); a shared store (e.g. Upstash Redis) makes the app's own cap exact.
 
 ### Others
 

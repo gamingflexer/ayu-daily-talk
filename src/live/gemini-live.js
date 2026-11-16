@@ -18,7 +18,7 @@ import { GoogleGenAI } from '@google/genai';
 import { AUDIO_IN, AUDIO_OUT, openingNudge } from '../../shared/live-config.js';
 import { createTalkState, handleTool, recordAnswer, changeAnswer, answerText, changedText, cameraTurnText, referral } from '../../shared/talk-state.js';
 import { startMic, createPlayer, startFrames } from './audio.js';
-import { liveServerUrl } from './server.js';
+import { liveServerUrl, pagePass } from './server.js';
 import { runToolCalls, looksLikeCardQuestion, lastQuestion, missingCardNudge } from './tool-flow.js';
 
 export const TALK_SECONDS = 300;
@@ -65,7 +65,7 @@ export function createGeminiTalk({ persona, lang = 'en' }) {
   async function token() {
     const res = await fetch(`${liveServerUrl()}/api/live-token`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Talk-Pass': await pagePass() },
       body: JSON.stringify({ persona: persona.id, lang }),
     });
     if (!res.ok) {

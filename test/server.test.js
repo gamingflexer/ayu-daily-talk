@@ -1,12 +1,14 @@
 import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { handleApi, sanitizeTalk } from '../server/lib/api.js';
-import { checkOrigin, rateLimit, takeDaily, clientIp, _resetGuards } from '../server/lib/guard.js';
+import { checkOrigin, rateLimit, takeDaily, clientIp, _resetGuards, issuePass, checkPass, PASS_TTL_MS } from '../server/lib/guard.js';
 
 const FAKE = 'test-key-not-real';
 const mintToken = async () => 'auth_tokens/fake';
 const writeNote = async () => 'Short note.';
-const req = (over = {}) => ({ method: 'POST', headers: { host: 'ayu.example' }, body: { persona: 'reena', lang: 'hi' }, ip: '1.2.3.4', ...over });
+// A browser on the page: same-origin POST carrying the page pass from /api/health.
+const pageHeaders = () => ({ host: 'ayu.example', origin: 'https://ayu.example', 'x-talk-pass': issuePass(FAKE) });
+const req = (over = {}) => ({ method: 'POST', headers: pageHeaders(), body: { persona: 'reena', lang: 'hi' }, ip: '1.2.3.4', ...over });
 
 beforeEach(() => {
   _resetGuards();
@@ -33,23 +35,49 @@ test('live-token: foreign origin → 403, no token minted', async () => {
   assert.equal(minted, 0);
 });
 
-test('live-token: no-Origin caller (React Native) gets a token, locked config for her language', async () => {
+test('live-token: the page (same origin + pass) gets a token, locked config for her language', async () => {
   const out = await handleApi('live-token', req(), { mintToken });
   assert.equal(out.status, 200);
   assert.equal(out.body.token, 'auth_tokens/fake');
   assert.match(out.body.config.systemInstruction, /Reena/);
   assert.match(out.body.config.systemInstruction, /Speak Hindi/);
-  assert.equal(out.headers['Access-Control-Allow-Origin'], undefined);
+});
+
+test('live-token: a script without Origin is refused, no token minted (16 Nov 2026)', async () => {
+  let minted = 0;
+  const out = await handleApi('live-token', req({ headers: { host: 'ayu.example', 'x-talk-pass': issuePass(FAKE) } }), {
+    mintToken: async () => (minted++, 't'),
+  });
+  assert.equal(out.status, 403);
+  assert.equal(minted, 0);
+});
+
+test('live-token: a faked Origin without the page pass is refused', async () => {
+  for (const pass of [undefined, 'garbage', `${Date.now()}.00`, issuePass('another-key'), issuePass(FAKE, Date.now() - PASS_TTL_MS - 1000)]) {
+    const headers = { host: 'ayu.example', origin: 'https://ayu.example' };
+    if (pass) headers['x-talk-pass'] = pass;
+    const out = await handleApi('live-token', req({ headers }), { mintToken });
+    assert.equal(out.status, 403, String(pass));
+    assert.equal(out.body.pass, false);
+  }
+});
+
+test('health hands out a pass that checks out, and no pass without a key', async () => {
+  const out = await handleApi('health', { method: 'GET', headers: {}, ip: '1' });
+  assert.equal(checkPass(FAKE, out.body.pass), true);
+  assert.equal(checkPass(FAKE, out.body.pass, Date.now() + PASS_TTL_MS + 1000), false);
+  process.env.GEMINI_API_KEY = '';
+  assert.equal((await handleApi('health', { method: 'GET', headers: {}, ip: '1' })).body.pass, undefined);
 });
 
 test('live-token: allowed origin gets CORS headers; preflight 204', async () => {
-  const h = { host: 'api.example', origin: 'https://gamingflexer.github.io' };
+  const h = { host: 'api.example', origin: 'https://gamingflexer.github.io', 'x-talk-pass': issuePass(FAKE) };
   const out = await handleApi('live-token', req({ headers: h }), { mintToken });
   assert.equal(out.headers['Access-Control-Allow-Origin'], 'https://gamingflexer.github.io');
   assert.equal((await handleApi('live-token', { method: 'OPTIONS', headers: h, ip: '1' })).status, 204);
 });
 
-test('live-token: per-IP rate limit (also for no-Origin callers)', async () => {
+test('live-token: per-IP rate limit', async () => {
   process.env.LIVE_TOKEN_PER_MIN = '2';
   assert.equal((await handleApi('live-token', req(), { mintToken })).status, 200);
   assert.equal((await handleApi('live-token', req(), { mintToken })).status, 200);
@@ -127,7 +155,7 @@ test('live-token accepts every app language and falls back to English for others
     let seen = null;
     const res = await handleApi(
       'live-token',
-      { method: 'POST', headers: {}, body: { persona: 'sunita', lang }, ip: `9.9.9.${lang.length}` },
+      { method: 'POST', headers: { host: 'ayu.example', origin: 'https://ayu.example', 'x-talk-pass': issuePass('test-key') }, body: { persona: 'sunita', lang }, ip: `9.9.9.${lang.length}` },
       { mintToken: async ({ config }) => ((seen = config), 'tok') },
     );
     assert.equal(res.status, 200, lang);

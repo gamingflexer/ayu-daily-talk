@@ -13,7 +13,7 @@ import { GoogleGenAI } from '@google/genai';
 import { buildLiveConfig, DEFAULT_MODEL, API_VERSION, LANG_NAME } from '../../shared/live-config.js';
 import { getPersona } from '../../shared/personas.js';
 import { buildDoctorSummary, noteContradicts } from '../../shared/doctor-summary.js';
-import { checkOrigin, rateLimit, takeDaily, envInt } from './guard.js';
+import { checkOrigin, rateLimit, takeDaily, envInt, issuePass, checkPass } from './guard.js';
 
 // Every app language (shared/live-config.js LANG_NAME); anything else falls back to English.
 const LANGS = Object.keys(LANG_NAME);
@@ -49,7 +49,7 @@ function corsHeaders(origin) {
     'Access-Control-Allow-Origin': origin,
     Vary: 'Origin',
     'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Talk-Pass',
     'Access-Control-Max-Age': '600',
   };
 }
@@ -62,7 +62,8 @@ function corsHeaders(origin) {
  */
 export async function handleApi(route, req, deps = {}) {
   const s = settings();
-  const origin = checkOrigin(req.headers);
+  // POSTs (token, summary) need a browser Origin; the health check stays open.
+  const origin = checkOrigin(req.headers, { requireOrigin: req.method === 'POST' });
   const cors = corsHeaders(origin.cors);
   const out = (status, body) => json(status, body, { ...cors, 'Cache-Control': 'no-store' });
 
@@ -70,7 +71,8 @@ export async function handleApi(route, req, deps = {}) {
 
   if (route === 'health') {
     if (req.method !== 'GET') return out(405, { error: 'GET only' });
-    return out(200, { ok: true, live: Boolean(s.key), model: s.model, apiVersion: API_VERSION, phone: 'stub', summary: Boolean(s.key) });
+    const pass = s.key ? issuePass(s.key) : undefined;
+    return out(200, { ok: true, live: Boolean(s.key), model: s.model, apiVersion: API_VERSION, phone: 'stub', summary: Boolean(s.key), pass });
   }
 
   if (req.method !== 'POST') return out(405, { error: 'POST only' });
@@ -78,6 +80,7 @@ export async function handleApi(route, req, deps = {}) {
 
   if (route === 'live-token') {
     if (!s.key) return out(503, { error: 'No GEMINI_API_KEY on the server — use mock mode.', mock: true });
+    if (!checkPass(s.key, req.headers['x-talk-pass'])) return out(403, { error: 'Please reload the page.', mock: true, pass: false });
     if (!rateLimit('live-token', req.ip, { limit: s.tokenPerMin })) return out(429, { error: 'Too many requests, try again in a minute.', mock: true });
     if (!takeDaily('live-token', s.tokenCap)) return out(429, { error: 'Today’s live talks are used up. Continuing in mock mode.', mock: true, cap: true });
 
