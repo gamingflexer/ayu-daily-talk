@@ -79,13 +79,15 @@ test('the tell config has only record_symptom and finish_talk, with a stage-limi
   assert.equal(cfg.inputAudioTranscription && cfg.outputAudioTranscription ? true : false, true);
 });
 
-test('prompt: greets by name in her language, listens, never decides a level, keeps the Never rules', () => {
+test('prompt: greets by name in her language, talks with her, never decides a level, keeps the Never rules', () => {
   const p = tellPrompt({ profile: { name: 'Reena', stage: 'pregnant', weeks: 34 }, lang: 'hi' });
   assert.match(p, /Name: Reena/);
   assert.match(p, /She chose Hindi in the app. Speak Hindi/);
   assert.match(p, /in Devanagari script/);
   assert.match(p, /ONE short sentence/);
-  assert.match(p, /at most 3 short follow-up questions/);
+  assert.match(p, /real back-and-forth conversation/);
+  assert.match(p, /one at a time/);
+  assert.match(p, /Do not end the talk while she is still telling you things/);
   assert.match(p, /Never say whether it is serious/);
   assert.match(p, /Never diagnose/);
   assert.match(p, /Never tell her to take, stop or change any medicine/);

@@ -11,8 +11,8 @@ An installable web app (PWA) in nine Indian languages. Every day Ayu asks a preg
 | Home | Daily check | See a doctor today | Call 108 | Help now |
 |---|---|---|---|---|
 | ![](docs/screenshots/home.png) | ![](docs/screenshots/check-pictures.png) | ![](docs/screenshots/result-doctor-today.png) | ![](docs/screenshots/result-108.png) | ![](docs/screenshots/help-now.png) |
-| **Tell Ayu (live)** | **You said** | **Tell Ayu in Hindi** | **ASHA · Today** | **ASHA · one woman** |
-| ![](docs/screenshots/tell-listening.png) | ![](docs/screenshots/tell-heard.png) | ![](docs/screenshots/tell-hindi.png) | ![](docs/screenshots/asha-today.png) | ![](docs/screenshots/asha-woman.png) |
+| **Tell Ayu (live)** | **Tell Ayu, camera on** | **Tell Ayu in Hindi** | **ASHA · Today** | **ASHA · one woman** |
+| ![](docs/screenshots/tell-listening.png) | ![](docs/screenshots/tell-camera.png) | ![](docs/screenshots/tell-hindi.png) | ![](docs/screenshots/asha-today.png) | ![](docs/screenshots/asha-woman.png) |
 | **ASHA · Help alert** | **Questions** | **Review a draft** | **Approve and send** | **Result in Hindi** |
 | ![](docs/screenshots/asha-alert.png) | ![](docs/screenshots/asha-questions.png) | ![](docs/screenshots/asha-review.png) | ![](docs/screenshots/asha-send.png) | ![](docs/screenshots/result-hindi.png) |
 
@@ -25,7 +25,7 @@ The names in the screenshots are test entries typed for the pictures. The app sh
 - **Home.** One light (the aura) shows how today is before she reads a word: warm sand when fine, amber, orange, and a dark room with a red light for 108. Three quiet rows: today's check, her last 7 days, her ASHA's number.
 - **Today's check.** One question a screen, read aloud in her language, answers she taps. Picture answers for every question of the pregnancy check. "Not sure" is always there and is never treated as "no".
 - **Result.** What to do, why (the answers that raised the level), where to go (her health centre, with directions), her ASHA by call or SMS, and 108.
-- **Tell Ayu.** She speaks in her own language to Gemini Live. Ayu greets her, listens, asks at most three short follow-ups and records the danger signs she clearly said. She sees her own words and what Ayu understood, removes anything wrong, and only then do the fixed rules give a level. She can turn the camera on to show feet, skin or a medicine strip. With no network the quick taps still work.
+- **Tell Ayu — a live voice and video call.** She talks with Ayu in her own language over the Gemini Live API, like a call on the phone: Ayu greets her, talks with her, asks the follow-ups a good health worker would, answers her questions in plain words, and she can interrupt at any time. A call dock gives camera on/off, switch camera and mic off; with the camera on, Ayu sees about one frame a second and says what it sees. While they talk Ayu notes the danger signs she clearly says. When the talk ends she sees her own words and what Ayu understood, removes anything wrong, and only then do the fixed rules give a level — Ayu never says how serious it is. With no network the quick taps still work.
 - **Help now.** On every calm screen. No questions: 108 in the middle, call or SMS her ASHA below. The SMS works without internet.
 
 ### The ASHA's app
@@ -77,12 +77,12 @@ The built-in pregnancy check follows the designer's board and raises five things
 
 | | |
 |---|---|
-| Tell Ayu | Gemini Live, `gemini-3.8-live` (`GEMINI_LIVE_MODEL`), API `v1beta`. Mic in 16 kHz PCM, audio out 24 kHz, camera JPEG ≤ 1 frame/s, input and output transcription. Sessions end by themselves at 3 minutes. |
+| Tell Ayu | Gemini Live, `gemini-3.8-live` (`GEMINI_LIVE_MODEL`), API `v1beta`. Mic in 16 kHz PCM, audio out 24 kHz, camera JPEG ≤ 1 frame/s, input and output transcription. A call ends by itself at 5 minutes (nudge at 4:30). |
 | Draft sets | `gemini-flash-lite-latest` (`DRAFT_MODEL`), JSON output. |
 
 **The key never reaches the phone.** The browser asks the server for a one-use ephemeral token (`POST /api/live-token`), valid for one session started within 60 s, with the model, system prompt and tools locked into the token. Her profile (name, stage, week, village) is cleaned on the server before it enters the prompt. POSTs need a browser `Origin` on the allow-list and the 10-minute page pass from `/api/health`; both endpoints are rate-limited per IP and capped per day.
 
-Checked on 20 Nov 2026 in headless Chrome with recorded speech as the microphone, against the real API: English and Hindi sessions → greeting by name → live transcript → `record_symptom` → Ayu ends the talk → "You said" → fixed rules → result; and a real draft set → review → approve → sent. Four of five English runs were clean; one lost her opening words (details and what was not checked: [`docs/GAPS.md`](docs/GAPS.md)).
+Checked on 20–21 Nov 2026 in headless Chrome with recorded speech as the microphone, against the real API: English and Hindi sessions → greeting by name → live transcript → `record_symptom` → Ayu ends the talk → "You said" → fixed rules → result; a multi-turn English call with the camera on (Ayu described the picture, asked follow-ups, did not record the bleeding she denied, ended the call itself → see a doctor today); and a real draft set → review → approve → sent. Four of five English runs were clean; one lost her opening words (details and what was not checked: [`docs/GAPS.md`](docs/GAPS.md)).
 
 ## Design
 

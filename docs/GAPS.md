@@ -42,7 +42,8 @@ Also for review:
 | **Real photos** for picture answers. | The 21 pictures in the pregnancy check and the Tell Ayu pills are **AI-generated** (one woman, not a real person; sources and cost in [`PHOTOS.md`](PHOTOS.md)). No openly licensed real photo fitted. A clinician and the designer must review them: the pitting dent is exaggerated on purpose, "face or hands swollen" shows only mild swelling, and "not moved since morning" looks much like "moving like usual" without its caption. The new-mother check uses illustrations for baby skin colour and words elsewhere. |
 | **Health centre details** (distance, opening hours). | She types the centre's name; the result links to map directions. No distance or hours are shown because none are known. |
 | **Reminders.** | No notification asks her to do today's check. |
-| **Session resumption** in Tell Ayu beyond two reconnects. | A talk is capped at 3 minutes, inside the session limit. |
+| **Session resumption** in Tell Ayu beyond two reconnects. | A call is capped at 5 minutes, inside the session limit. |
+| **Her first words while the call connects** (about 3–6 s). | The screen says "Connecting to Ayu…" and Ayu greets her first. Holding her early audio and sending it when the socket opened was tried on 21 Nov and made transcription worse, so it was taken out. |
 | **Voice for drafted sets.** | Read aloud with the phone's own voice where the phone has one for that language; the send screen says so only when it is true. |
 | **Rate limits** are per server instance. | The hard limit is the Gemini quota in Google Cloud. |
 | **GitHub Pages workflow** has failed since 16 Nov (it ends in 3 s, before the build). | The Vercel deploy is the live site. |
@@ -55,6 +56,7 @@ Headless Chrome, recorded speech as the microphone, real Gemini:
 - Tell Ayu in Hindi: Ayu spoke Hindi → fever + baby moving less recorded → See a doctor today, shown in Hindi.
 - Draft set for new mothers (English + Hindi) → review of 8 questions → approve → sent to the one matching woman.
 - Patient flow at 390 and 360 px (English, Marathi, Tamil, Malayalam); ASHA flow at 390 px.
+- 21 Nov: Tell Ayu as a real conversation (5-minute call, camera dock): one multi-turn English call with the camera on → Ayu said what it saw, asked about vision and belly pain, did not record "no bleeding", ended the call itself → headache + feet swollen → See a doctor today.
 - One phone, both roles: she signs up → the phone is also set up for an ASHA → the ASHA does today's check with her and lands back on her page → "Open her app" returns to her Home, Tell Ayu and Help now.
 - A hand-made approved set whose "pad soaked in an hour" answer was marked Fine still gave Call 108 (the fixed rule).
 

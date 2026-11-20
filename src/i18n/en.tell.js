@@ -18,7 +18,7 @@ export default {
     idle: 'Tap to speak',
     mic: 'Allow the microphone so Ayu can hear you…',
     connecting: 'Connecting to Ayu…',
-    start: 'Start speaking…',
+    start: 'Say how you feel. Ayu talks with you.',
     reconnecting: 'The connection dropped — reconnecting…',
     wrapping: 'Noting what you said…',
   },
@@ -30,7 +30,7 @@ export default {
   },
   tapToSpeak: 'Tap to speak',
   tryAgain: 'Try again',
-  stop: 'Stop and send',
+  stop: 'End the talk and check',
   cancel: 'Cancel',
   orTap: 'Or tap one',
   camera: {
@@ -39,6 +39,14 @@ export default {
     flip: 'Switch camera',
     notice: 'Only Ayu sees this. Nothing is saved.',
     failed: 'The camera didn’t start. You can keep talking.',
+  },
+  // The call controls while she talks with Ayu.
+  call: {
+    camera: 'Camera',
+    flip: 'Turn',
+    mute: 'Mic off',
+    unmute: 'Mic on',
+    mutedLine: 'Your mic is off — Ayu can’t hear you.',
   },
   heard: {
     meta: 'You said',

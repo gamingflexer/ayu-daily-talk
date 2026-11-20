@@ -44,6 +44,7 @@ export function TellScreen() {
   const { t, lang } = useT();
   const { woman, addEntry, role } = useStore();
   const [phase, setPhase] = useState('idle');
+  const [micOff, setMicOff] = useState(false);
   const [fail, setFail] = useState(null); // reason
   const [secs, setSecs] = useState(0);
   const [words, setWords] = useState(''); // her words so far
@@ -146,6 +147,7 @@ export function TellScreen() {
     setAyu('');
     setSecs(0);
     setHeard(null);
+    setMicOff(false);
 
     const m = await micPromise;
     if (stale()) return stopStream(m.audio);
@@ -224,6 +226,12 @@ export function TellScreen() {
     camRef.current = stream;
     setCam({ stream, facing });
     engineRef.current?.setCamera(stream);
+  }
+
+  function toggleMic() {
+    const next = !micOff;
+    setMicOff(next);
+    engineRef.current?.setMuted(next);
   }
 
   async function toggleCam() {
@@ -357,16 +365,6 @@ export function TellScreen() {
           {meta}
         </Mono>
         <span className="tell-actions">
-          {SESSION.has(phase) && (
-            <Circle
-              icon={camOn ? 'cameraOff' : 'camera'}
-              tone="soft"
-              label={camOn ? t('tell.camera.off') : t('tell.camera.on')}
-              aria-pressed={camOn}
-              disabled={camBusy}
-              onClick={toggleCam}
-            />
-          )}
           <Circle icon="close" tone="soft" label={t('tell.cancel')} onClick={cancel} />
         </span>
       </div>
@@ -374,7 +372,6 @@ export function TellScreen() {
       {(camOn || camFailed) && SESSION.has(phase) && (
         <div className="tell-cam-row">
           <span>{camOn ? t('tell.camera.notice') : t('tell.camera.failed')}</span>
-          {camOn && <Circle icon="flip" tone="soft" size={44} label={t('tell.camera.flip')} disabled={camBusy} onClick={flipCam} />}
         </div>
       )}
 
@@ -395,18 +392,49 @@ export function TellScreen() {
           <span className="tell-fail">{failLine}</span>
         ) : (
           <>
-            {words}
-            {!words && <span className="tell-hint">{hint}</span>}
+            {micOff && live ? <span className="tell-hint">{t('tell.call.mutedLine')}</span> : latest(words)}
+            {!words && !(micOff && live) && <span className="tell-hint">{hint}</span>}
           </>
         )}
       </p>
       {note && <p className="tell-ayu">{note}</p>}
 
       <div className="grow" />
-      <QuickTaps signs={quick} levels={tapLevels} onPick={pickQuick} t={t} />
+      {SESSION.has(phase) ? (
+        /* A live call: camera, mic and (when the camera is on) flip, where the thumb is.
+           [Inferred: not on the boards] Same circle language as the rest of the app. */
+        <div className="tell-call">
+          <CallBtn icon={camOn ? 'cameraOff' : 'camera'} on={camOn} label={camOn ? t('tell.camera.off') : t('tell.camera.on')} text={t('tell.call.camera')} disabled={camBusy} onClick={toggleCam} />
+          {camOn && <CallBtn icon="flip" label={t('tell.camera.flip')} text={t('tell.call.flip')} disabled={camBusy} onClick={flipCam} />}
+          <CallBtn icon={micOff ? 'micOff' : 'mic'} on={micOff} label={micOff ? t('tell.call.unmute') : t('tell.call.mute')} text={micOff ? t('tell.call.unmute') : t('tell.call.mute')} disabled={!live} onClick={toggleMic} />
+        </div>
+      ) : (
+        <QuickTaps signs={quick} levels={tapLevels} onPick={pickQuick} t={t} />
+      )}
       <HelpBar />
     </Screen>
   );
+}
+
+/** One labelled round control of the call dock. */
+function CallBtn({ icon, on = false, label, text, ...rest }) {
+  return (
+    <button type="button" className="tell-callbtn" aria-label={label} aria-pressed={on} {...rest}>
+      <span className="tell-callbtn-ic">
+        <Icon name={icon} size={26} weight={2} />
+      </span>
+      <span className="tell-callbtn-tx">{text}</span>
+    </button>
+  );
+}
+
+/** Only her latest words stay on screen during a long talk (the whole talk is shown on "You said"). */
+function latest(text, max = 110) {
+  const s = (text || '').trim();
+  if (s.length <= max) return s;
+  const cut = s.slice(-max);
+  const at = cut.search(/\s/);
+  return `… ${cut.slice(at > -1 ? at + 1 : 0).trim()}`;
 }
 
 const rowKey = (s, i) => (s.sign === 'other' ? `other:${i}` : s.sign);

@@ -56,6 +56,7 @@ export function createGeminiTalk({ profile, lang = 'en' }) {
   let closedByUs = false;
   let reconnects = 0;
   let muted = false; // no more mic audio to the model
+  let userMuted = false; // she turned her mic off for a moment
   let silent = false; // no more Ayu audio to her
   let wrapping = null; // 'stop' | 'timeout' while waiting for the last tool calls
   let finished = false;
@@ -106,9 +107,9 @@ export function createGeminiTalk({ profile, lang = 'en' }) {
           targetRate: AUDIO_IN.sampleRate,
           stream,
           onChunk: (data) => {
-            if (!muted) send({ audio: { data, mimeType: AUDIO_IN.mimeType } });
+            if (!muted && !userMuted) send({ audio: { data, mimeType: AUDIO_IN.mimeType } });
           },
-          onLevel: (rms) => emit({ type: 'level', rms: muted ? 0 : rms }),
+          onLevel: (rms) => emit({ type: 'level', rms: muted || userMuted ? 0 : rms }),
         });
       } catch {
         throw failure('mic');
@@ -170,7 +171,7 @@ export function createGeminiTalk({ profile, lang = 'en' }) {
       secs++;
       emit({ type: 'tick', secs });
       if (secs === TELL_NUDGE_AT) send({ text: TIME_NUDGE });
-      // Wrap early enough that Heard shows by 3:00 even if the model uses its whole grace.
+      // Wrap early enough that Heard shows by 5:00 even if the model uses its whole grace.
       if (secs >= TELL_SECONDS - WRAP_MS / 1000) wrap('timeout');
     }, 1000);
   }
@@ -212,6 +213,8 @@ export function createGeminiTalk({ profile, lang = 'en' }) {
         lastWho = 'her';
         emit({ type: 'her', text: heard });
       }
+      // A finished model turn: the next caption starts fresh (one turn on screen at a time).
+      if (sc.turnComplete && lastWho === 'ayu') lastWho = null;
       if (sc.outputTranscription?.text && !silent) {
         if (lastWho !== 'ayu') ayuText = '';
         ayuText += sc.outputTranscription.text;
@@ -325,6 +328,10 @@ export function createGeminiTalk({ profile, lang = 'en' }) {
     /** "Stop and send". */
     stop: () => wrap('stop'),
     setCamera,
+    /** Her own mic switch during the talk (nothing is sent while off). */
+    setMuted(on) {
+      userMuted = Boolean(on);
+    },
     end,
   };
 }
