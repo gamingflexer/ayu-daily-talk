@@ -123,5 +123,9 @@ export function appendHeard(heard, chunk, newTurn = false) {
 export function resumeText(state, heard = '') {
   const noted = state.symptoms.map((x) => `${x.sign} ("${x.her_words}")`).join('; ');
   const words = heard ? heard.slice(-400) : '';
-  return `[The connection dropped for a moment and is back. Do not greet her again. Already recorded: ${noted || 'nothing yet'}. Her words so far: "${words}". Say "I'm back" in one short line in her language and keep listening.]`;
+  const c = state.check;
+  const check = c
+    ? ` Daily check answers so far: ${Object.entries(c.answers).map(([q, o]) => `${q}=${o}`).join(', ') || 'none'}. Still to ask: ${checkLeft(state).join(', ') || 'nothing'}; show and ask the next one.`
+    : '';
+  return `[The connection dropped for a moment and is back. Do not greet her again. Already recorded: ${noted || 'nothing yet'}. Her words so far: "${words}".${check} Say "I'm back" in one short line in her language, then go on.]`;
 }

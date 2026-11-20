@@ -35,6 +35,16 @@ export const WRAP_MS = 4000;
 /** After finish_talk: let Ayu finish her closing line, at most this long. */
 const CLOSE_LINE_MS = 6000;
 const MAX_RECONNECTS = 2;
+/**
+ * Watchdog for a stuck turn: Gemini's voice detection sometimes stops hearing her after a
+ * very short first reply that cut across Ayu's greeting (seen 21 Nov on a phone and in tests).
+ * If the phone hears her speak for a while and Gemini shows no sign of hearing it within a few
+ * seconds, the session is restarted (new token, same talk: resumeText tells Ayu what was said).
+ * Closing only the audio stream (audioStreamEnd) was tried first and did not unstick it.
+ */
+const SPEECH_RMS = 0.012;
+const SPEECH_TICKS = 6; // ~0.6 s of her voice
+const STUCK_MS = 3500;
 const DEBUG = (() => {
   try {
     return localStorage.getItem('ayu:debug') === '1';
@@ -55,6 +65,13 @@ export function createGeminiTalk({ profile, lang = 'en', check = null }) {
   /** The whole talk, turn by turn (for the research record): {who: 'her'|'ayu'|'app', text, at}. */
   const turns = [];
   let camUsed = false;
+  let loudTicks = 0;
+  let spokeAt = 0; // when the phone last heard her speak (above the watchdog's floor)
+  let heardAt = 0; // when Gemini last showed it heard her (voice activity or transcription)
+  let ayuSpeaking = false;
+  let ayuAudioAt = 0; // last chunk of Ayu's voice from Gemini
+  let kicks = 0;
+  let lastKick = 0;
   const turn = (who, text) => {
     const last = turns[turns.length - 1];
     if (last && last.who === who && who !== 'app') last.text += text;
@@ -125,13 +142,20 @@ export function createGeminiTalk({ profile, lang = 'en', check = null }) {
           onChunk: (data) => {
             if (!muted && !userMuted) send({ audio: { data, mimeType: AUDIO_IN.mimeType } });
           },
-          onLevel: (rms) => emit({ type: 'level', rms: muted || userMuted ? 0 : rms }),
+          onLevel: (rms) => {
+            emit({ type: 'level', rms: muted || userMuted ? 0 : rms });
+            watch(rms);
+          },
         });
       } catch {
         throw failure('mic');
       }
       if (closedByUs) return cleanup();
-      player = createPlayer(AUDIO_OUT.sampleRate, { onSpeaking: (on) => emit({ type: 'speaking', on }) });
+      // One AudioContext for mic and speaker: on iPhones a second context can silence the mic.
+      player = createPlayer(AUDIO_OUT.sampleRate, { ctx: mic.ctx, onSpeaking: (on) => {
+          ayuSpeaking = on;
+          emit({ type: 'speaking', on });
+        } });
       try {
         await connect(t);
       } catch {
@@ -217,14 +241,58 @@ export function createGeminiTalk({ profile, lang = 'en', check = null }) {
     emit({ type: 'status', status: 'failed', reason: 'socket' });
   }
 
+  /** See SPEECH_RMS above. */
+  function watch(rms) {
+    // Not while Ayu is talking (her own voice could leak into the mic): judged by Gemini's audio, not the speaker.
+    if (!open || muted || userMuted || finished || wrapping || Date.now() - ayuAudioAt < 1500) {
+      loudTicks = 0;
+      return;
+    }
+    const now = Date.now();
+    if (rms > SPEECH_RMS) {
+      loudTicks++;
+      if (loudTicks >= SPEECH_TICKS && !spokeAt) spokeAt = now;
+      return;
+    }
+    loudTicks = 0;
+    if (spokeAt && heardAt < spokeAt && now - spokeAt > STUCK_MS && now - lastKick > 8000 && kicks < 3) {
+      lastKick = now;
+      spokeAt = 0;
+      kicks++;
+      if (DEBUG) console.log('[ayu-watchdog] she spoke but Gemini did not hear: restarting the session');
+      turn('app', 'watchdog: session restarted');
+      restart();
+    } else if (spokeAt && heardAt >= spokeAt) spokeAt = 0;
+  }
+
+  /** A fresh session for the same talk (the old socket's close is ignored). */
+  function restart() {
+    const old = session;
+    session = null;
+    open = false;
+    try {
+      old?.close();
+    } catch {
+      // already closed
+    }
+    reconnects = Math.max(0, reconnects - 1); // a stall restart does not use up the drop budget
+    reconnect('stall');
+  }
+
   function onMessage(msg) {
+    if (msg.voiceActivity || msg.serverContent?.inputTranscription) heardAt = Date.now();
     // Debugging on a phone: localStorage['ayu:debug'] = '1' logs every message from Gemini.
     if (DEBUG) console.log('[ayu-live]', JSON.stringify(msg).slice(0, 600));
     const sc = msg.serverContent;
     if (sc) {
       if (sc.interrupted) player?.stop();
       if (!silent) {
-        for (const part of sc.modelTurn?.parts || []) if (part.inlineData?.data) player?.play(part.inlineData.data);
+        for (const part of sc.modelTurn?.parts || []) {
+          if (part.inlineData?.data) {
+            ayuAudioAt = Date.now();
+            player?.play(part.inlineData.data);
+          }
+        }
       }
       if (sc.inputTranscription?.text && !finished) {
         heard = appendHeard(heard, sc.inputTranscription.text, lastWho !== 'her');

@@ -88,6 +88,8 @@ export async function startMic({ targetRate = 16000, onChunk, onLevel, stream: g
 
   return {
     stream,
+    /** Shared with the player (see createPlayer). */
+    ctx,
     setMuted(v) {
       muted = v;
       stream.getAudioTracks().forEach((t) => (t.enabled = !v));
@@ -104,8 +106,9 @@ export async function startMic({ targetRate = 16000, onChunk, onLevel, stream: g
  * Plays 16-bit PCM chunks back to back.
  * onSpeaking(on) fires when Ayu starts / stops sounding; onLevel(rms) ~10×/s while she speaks (the voice orb).
  */
-export function createPlayer(sampleRate = 24000, { onSpeaking, onLevel } = {}) {
-  const ctx = new AudioContext({ sampleRate });
+export function createPlayer(sampleRate = 24000, { onSpeaking, onLevel, ctx: shared = null } = {}) {
+  // Prefer the mic's context (one audio session on phones); 24 kHz buffers play in any context.
+  const ctx = shared || new AudioContext({ sampleRate });
   const analyser = ctx.createAnalyser();
   analyser.fftSize = 512;
   analyser.connect(ctx.destination);
@@ -170,6 +173,7 @@ export function createPlayer(sampleRate = 24000, { onSpeaking, onLevel } = {}) {
     close() {
       this.stop();
       clearInterval(meter);
+      if (shared) return Promise.resolve(); // the mic closes it
       return ctx.close().catch(() => {});
     },
   };

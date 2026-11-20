@@ -299,7 +299,13 @@ export function buildTellConfig({ profile, lang = 'en', check = null }) {
     // Audio+video sessions are short without compression.
     contextWindowCompression: { slidingWindow: {} },
     realtimeInputConfig: {
-      automaticActivityDetection: { silenceDurationMs: 700 },
+      // High start sensitivity: on 21 Nov, after Ayu's first reply, quiet or short answers were
+      // not picked up at the default (seen on a phone and in tests).
+      automaticActivityDetection: {
+        startOfSpeechSensitivity: 'START_SENSITIVITY_HIGH',
+        prefixPaddingMs: 200,
+        silenceDurationMs: 800,
+      },
     },
   };
 }
