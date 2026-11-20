@@ -24,9 +24,11 @@ export function signsFor(stage) {
 
 const str = (v, max) => (typeof v === 'string' ? v : v == null ? '' : String(v)).replace(/\s+/g, ' ').trim().slice(0, max);
 
-export function createTellState({ stage } = {}) {
+export function createTellState({ stage, check = null } = {}) {
   return {
     stage,
+    /** In a daily check on the call: the questions (cleaned), her answers and the one on screen. */
+    check: check ? { questions: check.questions, answers: {}, current: null } : null,
     allowed: new Set(signsFor(stage)),
     /** What she said she has, one entry per sign (deduped), in the order Ayu first recorded it. */
     symptoms: [],
@@ -37,6 +39,17 @@ export function createTellState({ stage } = {}) {
 
 /** Recorded signs, deduped, in order (no 'other'). */
 export const recordedSigns = (state) => state.symptoms.filter((x) => x.sign !== 'other').map((x) => x.sign);
+
+/** Question ids of the daily check not answered yet (in order). */
+export function checkLeft(state) {
+  const c = state.check;
+  return c ? c.questions.filter((q) => c.answers[q.id] === undefined).map((q) => q.id) : [];
+}
+
+/** She tapped an answer on the card (the same as record_answer, from her finger). */
+export function tapAnswer(state, qid, oid) {
+  return handleTellTool(state, 'record_answer', { question_id: qid, option_id: oid });
+}
 
 /**
  * Handle one tool call from the model.
@@ -67,6 +80,24 @@ export function handleTellTool(state, name, args) {
       const symptom = { sign, her_words: words, since, severity, at: Date.now() };
       state.symptoms.push(symptom);
       return { symptom, response: { saved: true } };
+    }
+    case 'show_question': {
+      const c = state.check;
+      if (!c) return { response: { error: 'no daily check in this talk' } };
+      const q = c.questions.find((x) => x.id === str(args.question_id, 20));
+      if (!q) return { response: { shown: false, reason: 'unknown question_id', question_ids: c.questions.map((x) => x.id) } };
+      c.current = q.id;
+      return { show: q.id, response: { shown: true, already_answered: c.answers[q.id] !== undefined } };
+    }
+    case 'record_answer': {
+      const c = state.check;
+      if (!c) return { response: { error: 'no daily check in this talk' } };
+      const q = c.questions.find((x) => x.id === str(args.question_id, 20));
+      if (!q) return { response: { saved: false, reason: 'unknown question_id' } };
+      const o = str(args.option_id, 20);
+      if (o !== 'unsure' && !q.options.some((x) => x.id === o)) return { response: { saved: false, reason: 'unknown option_id', option_ids: [...q.options.map((x) => x.id), 'unsure'] } };
+      c.answers[q.id] = o;
+      return { answer: { q: q.id, o }, response: { saved: true, left: checkLeft(state) } };
     }
     case 'finish_talk': {
       state.finished = true;

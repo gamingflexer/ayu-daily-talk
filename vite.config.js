@@ -7,6 +7,8 @@ const base = process.env.PAGES_BASE || '/';
 
 export default defineConfig({
   base,
+  // Which build wrote a research record (src/research.js).
+  define: { __APP_VERSION__: JSON.stringify(process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || 'dev') },
   plugins: [
     react(),
     VitePWA({

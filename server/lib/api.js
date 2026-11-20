@@ -11,7 +11,7 @@
 //      LIVE_TOKEN_DAILY_CAP (200), LIVE_TOKEN_PER_MIN (6), PAGE_PASS_SECRET
 
 import { GoogleGenAI } from '@google/genai';
-import { buildTellConfig, cleanProfile, DEFAULT_MODEL, API_VERSION, LANG_NAME } from '../../shared/live-config.js';
+import { buildTellConfig, cleanProfile, cleanCheck, DEFAULT_MODEL, API_VERSION, LANG_NAME } from '../../shared/live-config.js';
 import { checkOrigin, rateLimit, takeDaily, envInt, issuePass, checkPass } from './guard.js';
 import { handleDraft } from './draft.js';
 
@@ -88,7 +88,10 @@ export async function handleApi(route, req, deps = {}) {
     const body = req.body && typeof req.body === 'object' ? req.body : {};
     const profile = cleanProfile(body.profile);
     const lang = LANGS.includes(body.lang) ? body.lang : 'en';
-    const config = buildTellConfig({ profile, lang });
+    // A daily check on the call sends its questions (in her language); they are cleaned before the prompt.
+    const check = body.check ? cleanCheck(body.check) : null;
+    if (body.check && !check) return out(400, { error: 'Bad question set.', reason: 'check' });
+    const config = buildTellConfig({ profile, lang, check });
     try {
       const token = await (deps.mintToken || mintToken)({ key: s.key, model: s.model, config });
       return out(200, { token, model: s.model, apiVersion: API_VERSION, config, expiresInSec: 900 });

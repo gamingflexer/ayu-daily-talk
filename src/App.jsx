@@ -65,6 +65,11 @@ function Routes() {
   if (path === '/home')
     return (
       <HomeScreen
+        onCheck={() => {
+          // Today's check is a call: ask for the mic inside her tap, then open it.
+          beginTell();
+          go('/call');
+        }}
         onTell={() => {
           // Ask for the mic inside her tap (iOS only grants it in a user gesture), then open the screen.
           beginTell();
@@ -73,7 +78,9 @@ function Routes() {
       />
     );
   if (path === '/check') return <CheckScreen />;
-  if (path === '/tell') return <TellScreen />;
+  if (path === '/tell') return <TellScreen key="tell" />;
+  // Today's check starts as a video call with Ayu; /check is the same check by tapping (no call).
+  if (path === '/call') return <TellScreen key="call" mode="check" />;
   if (path === '/help') return <HelpScreen />;
   return <Redirect to="/home" />;
 }

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import './styles.css';
 import App from './App.jsx';
+import { flushResearch } from './research.js';
 
 // Keep Chrome's install event for our own "Add to Home screen" banner.
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -27,6 +28,9 @@ window.addEventListener('vite:preloadError', (e) => {
   e.preventDefault();
   location.reload();
 });
+
+// Records that could not be sent last time (no network) go now.
+flushResearch();
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

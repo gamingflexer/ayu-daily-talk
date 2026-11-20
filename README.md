@@ -23,7 +23,7 @@ The names in the screenshots are test entries typed for the pictures. The app sh
 ### Her app
 
 - **Home.** One light (the aura) shows how today is before she reads a word: warm sand when fine, amber, orange, and a dark room with a red light for 108. Three quiet rows: today's check, her last 7 days, her ASHA's number.
-- **Today's check.** One question a screen, read aloud in her language, answers she taps. Picture answers for every question of the pregnancy check. "Not sure" is always there and is never treated as "no".
+- **Today's check.** It starts as a Gemini Live video call (route `/call`). Ayu greets her, then asks each question aloud while the app shows it as a card with the picture answers over the call. She taps an answer or says it (`record_answer`). "Not sure" is always there and is never treated as "no"; Ayu may then ask her to show it on the camera. Ayu never says the level. If she mentions something else, Ayu notes it and she confirms it on "You said". If the call ends with questions unanswered, the app continues the same check by tapping (`/check`) from the first open question. If there is no call (no mic, no internet, no key), a button offers the same check by tapping. The fixed rules decide the level, as before. Picture answers for every question of the pregnancy check.
 - **Result.** What to do, why (the answers that raised the level), where to go (her health centre, with directions), her ASHA by call or SMS, and 108.
 - **Tell Ayu — a live voice and video call.** She talks with Ayu in her own language over the Gemini Live API, like a call on the phone: Ayu greets her, talks with her, asks the follow-ups a good health worker would, answers her questions in plain words, and she can interrupt at any time. A call dock gives camera on/off, switch camera and mic off; with the camera on, Ayu sees about one frame a second and says what it sees. While they talk Ayu notes the danger signs she clearly says. When the talk ends she sees her own words and what Ayu understood, removes anything wrong, and only then do the fixed rules give a level — Ayu never says how serious it is. With no network the quick taps still work.
 - **Help now.** On every calm screen. No questions: 108 in the middle, call or SMS her ASHA below. The SMS works without internet.
@@ -37,9 +37,13 @@ The names in the screenshots are test entries typed for the pictures. The app sh
 
 ### Where the data lives
 
-Everything is saved **on the phone** (browser storage): names, answers, question sets. There are no accounts and no server database. Sign-in is a name and a phone number, not verified. The woman's app and the ASHA's app on one phone read the same data, so today an ASHA sees the women she added on her own phone and the checks done on it. Because of that the app never says "your ASHA has been alerted": it gives her a call button and a ready-written SMS instead. Sharing between phones needs a server and is the next step (see [`docs/GAPS.md`](docs/GAPS.md)).
+Everything the app needs is saved **on the phone** (browser storage): names, answers, question sets. There are no accounts and no app server database. Sign-in is a name and a phone number, not verified. The woman's app and the ASHA's app on one phone read the same data, so today an ASHA sees the women she added on her own phone and the checks done on it. Because of that the app never says "your ASHA has been alerted": it gives her a call button and a ready-written SMS instead. Sharing between phones needs a server and is the next step (see [`docs/GAPS.md`](docs/GAPS.md)).
 
-What leaves the phone: her voice (and camera frames, if she turns the camera on) go to Google's Gemini Live API during Tell Ayu, and an ASHA's one-line description goes to Gemini when she asks for a draft set.
+What leaves the phone:
+
+- Her voice (and camera frames, if she turns the camera on) go to Google's Gemini Live API during Tell Ayu and the daily check call.
+- An ASHA's one-line description goes to Gemini when she asks for a draft set.
+- **A research record of every talk and check** goes to a Firestore database in the Firebase project `ayu-daily-talk-research`, so Ayu can be improved. It has no name, phone number, village or ASHA details; it holds the transcription text, answers, signs, level and rule, not her voice. Records that cannot be sent wait on the phone and go the next time the app opens. Without the `VITE_FIREBASE_*` vars nothing is sent. What is sent, how to export or delete it, and the limits: [`docs/RESEARCH-DATA.md`](docs/RESEARCH-DATA.md).
 
 ## Run it
 
@@ -77,12 +81,12 @@ The built-in pregnancy check follows the designer's board and raises five things
 
 | | |
 |---|---|
-| Tell Ayu | Gemini Live, `gemini-3.8-live` (`GEMINI_LIVE_MODEL`), API `v1beta`. Mic in 16 kHz PCM, audio out 24 kHz, camera JPEG ≤ 1 frame/s, input and output transcription. A call ends by itself at 5 minutes (nudge at 4:30). |
+| Tell Ayu and the daily check call | Gemini Live, `gemini-3.8-live` (`GEMINI_LIVE_MODEL`), API `v1beta`. Mic in 16 kHz PCM, audio out 24 kHz, camera JPEG ≤ 1 frame/s, input and output transcription. A call ends by itself at 5 minutes (nudge at 4:30). |
 | Draft sets | `gemini-flash-lite-latest` (`DRAFT_MODEL`), JSON output. |
 
 **The key never reaches the phone.** The browser asks the server for a one-use ephemeral token (`POST /api/live-token`), valid for one session started within 60 s, with the model, system prompt and tools locked into the token. Her profile (name, stage, week, village) is cleaned on the server before it enters the prompt. POSTs need a browser `Origin` on the allow-list and the 10-minute page pass from `/api/health`; both endpoints are rate-limited per IP and capped per day.
 
-Checked on 20–21 Nov 2026 in headless Chrome with recorded speech as the microphone, against the real API: English and Hindi sessions → greeting by name → live transcript → `record_symptom` → Ayu ends the talk → "You said" → fixed rules → result; a multi-turn English call with the camera on (Ayu described the picture, asked follow-ups, did not record the bleeding she denied, ended the call itself → see a doctor today); and a real draft set → review → approve → sent. Four of five English runs were clean; one lost her opening words (details and what was not checked: [`docs/GAPS.md`](docs/GAPS.md)).
+Checked on 20–21 Nov 2026 in headless Chrome with recorded speech as the microphone, against the real API: English and Hindi sessions → greeting by name → live transcript → `record_symptom` → Ayu ends the talk → "You said" → fixed rules → result; a multi-turn English call with the camera on (Ayu described the picture, asked follow-ups, did not record the bleeding she denied, ended the call itself → see a doctor today); and a real draft set → review → approve → sent. Four of five English runs were clean; one lost her opening words (details and what was not checked: [`docs/GAPS.md`](docs/GAPS.md)). The daily check on the call (21 Nov) is unit-tested (`test/check-call.test.js`) but has not been run live yet; Om's phone test will be added to [`docs/GAPS.md`](docs/GAPS.md).
 
 ## Design
 
@@ -96,15 +100,17 @@ Screens follow Vrindar's boards "Ayu · patient app v0 — calm surfaces, one li
 
 ```
 shared/        rules and facts, used by server, browser and tests
-src/patient/   first open, sign-up, Home, daily check, result, Help now, profile
-src/tell/      Tell Ayu (listening, camera, "You said")
+src/patient/   first open, sign-up, Home, daily check (by tapping), result, Help now, profile
+src/tell/      Tell Ayu and today's check on the call (listening, camera, question cards, "You said")
+src/research.js  the research record and its send queue
+firebase/      Firestore security rules for the research store
 src/asha/      Today, Women, one woman, Help alert, Questions, review, send
 src/live/      mic, camera frames, audio playback, the Gemini Live engine
 src/ui/        icons, shared pieces, words, speech
 src/i18n/      en + hi mr bn ta te kn gu ml (three files per language)
 server/        Express (dev and self-hosting); server/lib is shared with api/
 api/           Vercel functions: health, live-token, draft-questions
-docs/          research, measurement rules, gaps
+docs/          research, measurement rules, gaps, research data
 ```
 
 ## Deploy
@@ -119,6 +125,8 @@ docs/          research, measurement rules, gaps
 | `LIVE_TOKEN_DAILY_CAP` / `LIVE_TOKEN_PER_MIN` | 200 / 6 | |
 | `DRAFT_MODEL`, `DRAFT_DAILY_CAP` / `DRAFT_PER_MIN` | `gemini-flash-lite-latest`, 100 / 4 | |
 | `GEMINI_LIVE_MODEL` | `gemini-3.8-live` | |
+| `VITE_FIREBASE_PROJECT` | — | build time. Firebase project for the research store (`ayu-daily-talk-research`). Without it nothing is sent. |
+| `VITE_FIREBASE_API_KEY` | — | build time. The project's public web key. Without it nothing is sent. |
 
 The rate limit and caps are kept in memory per function instance; the hard ceiling is the quota cap on the Gemini API in Google Cloud.
 

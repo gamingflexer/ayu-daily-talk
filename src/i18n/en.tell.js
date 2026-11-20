@@ -40,6 +40,10 @@ export default {
     notice: 'Only Ayu sees this. Nothing is saved.',
     failed: 'The camera didn’t start. You can keep talking.',
   },
+  // Today's check, asked by Ayu on the call.
+  check: {
+    byTap: 'Answer by tapping instead',
+  },
   // The call controls while she talks with Ayu.
   call: {
     camera: 'Camera',

@@ -10,13 +10,21 @@ import { questionText, optionText } from '../ui/words.js';
 import { speak, hush } from '../ui/speak.js';
 import { picFor, hasPictures } from './pics.jsx';
 import { HelpBar } from './Home.jsx';
+import { takeCheckOver } from './handoff.js';
+import { saveResearch } from '../research.js';
 
 /** 2 · Daily check — one question a screen, read aloud, answers she can tap. */
 export function CheckScreen() {
   const { t, lang } = useT();
   const { woman, ctx, qset, addEntry, role } = useStore();
-  const [i, setI] = useState(0);
-  const [answers, setAnswers] = useState({});
+  // A check that started on the call and ended early arrives with its answers: carry on from the first open question.
+  const [over] = useState(() => takeCheckOver());
+  const [answers, setAnswers] = useState(() => over?.answers || {});
+  const [i, setI] = useState(() => {
+    const n = over ? qset.questions.findIndex((x) => over.answers[x.id] === undefined) : 0;
+    return n < 0 ? 0 : n;
+  });
+  const startedAt = useRef(Date.now());
   const timer = useRef(null);
   const Q = qset.questions;
   const q = Q[i];
@@ -35,8 +43,10 @@ export function CheckScreen() {
   useEffect(() => () => clearTimeout(timer.current), []);
 
   const finish = (all) => {
-    const r = assess({ set: qset, answers: all, ...ctx });
-    const e = addEntry({ womanId: woman.id, kind: 'check', setId: qset.id, setVersion: qset.version, answers: all, signs: r.signs, level: r.level, items: r.items, rule: r.rule, combo: r.combo, by: role === 'asha' ? 'asha' : 'self' });
+    const extraSigns = over?.extraSigns || [];
+    const r = assess({ set: qset, answers: all, extraSigns, ...ctx });
+    saveResearch({ kind: 'check', at: startedAt.current, lang, stage: woman.stage, weeks: ctx.weeks, daysAfterBirth: ctx.daysAfterBirth, setId: qset.id, answers: all, confirmed: extraSigns, signs: r.signs, level: r.level, rule: r.rule, items: r.items, endedBy: over ? 'call-then-tap' : 'tap' });
+    const e = addEntry({ womanId: woman.id, kind: 'check', via: over ? 'call+tap' : 'tap', setId: qset.id, setVersion: qset.version, answers: all, signs: r.signs, level: r.level, items: r.items, rule: r.rule, combo: r.combo, by: role === 'asha' ? 'asha' : 'self' });
     swap(`/result/${e.id}`);
   };
   const answer = (val) => {

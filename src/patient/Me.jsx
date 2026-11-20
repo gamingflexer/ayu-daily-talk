@@ -100,7 +100,7 @@ export function MeScreen() {
               />
             )}
           </Rows>
-          <p className="small" style={{ padding: '0 8px' }}>{t('me.onPhone')}</p>
+          <p className="small" style={{ padding: '0 8px' }}>{t('welcome.private')}</p>
           <button type="button" className="link" style={{ color: 'var(--red)' }} onClick={() => setSheet('erase')}>
             {t('me.erase')}
           </button>

@@ -24,8 +24,8 @@
 //   finish   {by: 'model'|'stop'|'timeout'|'drop', heard, symptoms, signs}   exactly once
 
 import { GoogleGenAI } from '@google/genai';
-import { AUDIO_IN, AUDIO_OUT, TELL_SECONDS, TELL_NUDGE_AT, openingNudge, STOP_NUDGE, TIME_NUDGE, CAMERA_ON_NUDGE, CAMERA_OFF_NUDGE } from '../../shared/live-config.js';
-import { createTellState, appendHeard, recordedSigns, resumeText } from '../../shared/talk-state.js';
+import { AUDIO_IN, AUDIO_OUT, TELL_SECONDS, TELL_NUDGE_AT, openingNudge, tappedNudge, STOP_NUDGE, TIME_NUDGE, CAMERA_ON_NUDGE, CAMERA_OFF_NUDGE } from '../../shared/live-config.js';
+import { createTellState, appendHeard, recordedSigns, resumeText, tapAnswer, checkLeft } from '../../shared/talk-state.js';
 import { startMic, createPlayer, startFrames } from './audio.js';
 import { liveServerUrl, pagePass } from './server.js';
 import { runToolCalls } from './tool-flow.js';
@@ -35,16 +35,31 @@ export const WRAP_MS = 4000;
 /** After finish_talk: let Ayu finish her closing line, at most this long. */
 const CLOSE_LINE_MS = 6000;
 const MAX_RECONNECTS = 2;
+const DEBUG = (() => {
+  try {
+    return localStorage.getItem('ayu:debug') === '1';
+  } catch {
+    return false;
+  }
+})();
 
 const failure = (reason, message) => Object.assign(new Error(message || reason), { reason });
 
 /**
  * @param {{profile: object, lang?: string}} opts  profile: {name, stage, weeks?, daysAfterBirth?, village?}
  */
-export function createGeminiTalk({ profile, lang = 'en' }) {
+export function createGeminiTalk({ profile, lang = 'en', check = null }) {
   const listeners = new Set();
   const emit = (e) => listeners.forEach((fn) => fn(e));
-  const state = createTellState({ stage: profile?.stage });
+  const state = createTellState({ stage: profile?.stage, check });
+  /** The whole talk, turn by turn (for the research record): {who: 'her'|'ayu'|'app', text, at}. */
+  const turns = [];
+  let camUsed = false;
+  const turn = (who, text) => {
+    const last = turns[turns.length - 1];
+    if (last && last.who === who && who !== 'app') last.text += text;
+    else turns.push({ who, text, at: Date.now() });
+  };
 
   let session = null;
   let mic = null;
@@ -69,6 +84,7 @@ export function createGeminiTalk({ profile, lang = 'en' }) {
   let closeTimer = null;
 
   const send = (input) => {
+    if (DEBUG) console.log('[ayu-send]', JSON.stringify(input).slice(0, 200));
     if (!open || !session) return;
     try {
       session.sendRealtimeInput(input);
@@ -83,7 +99,7 @@ export function createGeminiTalk({ profile, lang = 'en' }) {
       res = await fetch(`${liveServerUrl()}/api/live-token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Talk-Pass': await pagePass() },
-        body: JSON.stringify({ profile, lang }),
+        body: JSON.stringify({ profile, lang, ...(check ? { check } : {}) }),
       });
     } catch {
       throw failure(typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline' : 'server');
@@ -123,7 +139,7 @@ export function createGeminiTalk({ profile, lang = 'en' }) {
       }
       if (closedByUs) return;
       // Ayu speaks first, in her language.
-      send({ text: openingNudge(lang) });
+      send({ text: openingNudge(lang, Boolean(check)) });
       if (cam) send({ text: CAMERA_ON_NUDGE });
     } catch (err) {
       if (closedByUs) return;
@@ -202,6 +218,8 @@ export function createGeminiTalk({ profile, lang = 'en' }) {
   }
 
   function onMessage(msg) {
+    // Debugging on a phone: localStorage['ayu:debug'] = '1' logs every message from Gemini.
+    if (DEBUG) console.log('[ayu-live]', JSON.stringify(msg).slice(0, 600));
     const sc = msg.serverContent;
     if (sc) {
       if (sc.interrupted) player?.stop();
@@ -210,6 +228,7 @@ export function createGeminiTalk({ profile, lang = 'en' }) {
       }
       if (sc.inputTranscription?.text && !finished) {
         heard = appendHeard(heard, sc.inputTranscription.text, lastWho !== 'her');
+        turn('her', sc.inputTranscription.text);
         lastWho = 'her';
         emit({ type: 'her', text: heard });
       }
@@ -218,6 +237,7 @@ export function createGeminiTalk({ profile, lang = 'en' }) {
       if (sc.outputTranscription?.text && !silent) {
         if (lastWho !== 'ayu') ayuText = '';
         ayuText += sc.outputTranscription.text;
+        turn('ayu', sc.outputTranscription.text);
         lastWho = 'ayu';
         emit({ type: 'ayu', text: ayuText.replace(/\s+/g, ' ').trim() });
       }
@@ -264,7 +284,17 @@ export function createGeminiTalk({ profile, lang = 'en' }) {
     clearTimeout(wrapTimer);
     clearInterval(clock);
     clock = null;
-    emit({ type: 'finish', by, heard: heard.trim(), symptoms: state.symptoms.map((x) => ({ ...x })), signs: recordedSigns(state) });
+    emit({
+      type: 'finish',
+      by,
+      heard: heard.trim(),
+      symptoms: state.symptoms.map((x) => ({ ...x })),
+      signs: recordedSigns(state),
+      answers: state.check ? { ...state.check.answers } : null,
+      turns: turns.map((x) => ({ ...x, text: x.text.replace(/\s+/g, ' ').trim() })),
+      secs,
+      camera: camUsed,
+    });
     // Ayu's closing line may still be playing: let it end, then close.
     const t0 = Date.now();
     const tick = () => {
@@ -313,6 +343,7 @@ export function createGeminiTalk({ profile, lang = 'en' }) {
   function setCamera(stream) {
     const was = Boolean(cam);
     cam = stream || null;
+    if (cam) camUsed = true;
     stopFrames?.();
     stopFrames = cam && !finished ? startFrames(cam, (data) => send({ video: { data, mimeType: 'image/jpeg' } })) : null;
     if (!was && cam) send({ text: CAMERA_ON_NUDGE });
@@ -328,6 +359,14 @@ export function createGeminiTalk({ profile, lang = 'en' }) {
     /** "Stop and send". */
     stop: () => wrap('stop'),
     setCamera,
+    /** She tapped an answer on the card: save it and tell Ayu, who goes on to the next question. */
+    tap(qid, oid, qText, oText) {
+      const out = tapAnswer(state, qid, oid);
+      if (!out.answer) return;
+      turn('app', `tapped ${qid}=${oid}`);
+      emit({ type: 'answer', ...out.answer, by: 'tap' });
+      send({ text: tappedNudge(qText, oText, checkLeft(state)) });
+    },
     /** Her own mic switch during the talk (nothing is sent while off). */
     setMuted(on) {
       userMuted = Boolean(on);

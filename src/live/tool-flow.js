@@ -18,6 +18,8 @@ export function runToolCalls(state, calls) {
     if (!call?.name) continue;
     const out = handleTellTool(state, call.name, call.args || {});
     if (out.symptom) noted = true;
+    if (out.show) events.push({ type: 'show', q: out.show });
+    if (out.answer) events.push({ type: 'answer', ...out.answer });
     if (out.finish) events.push({ type: 'finish', by: 'model' });
     functionResponses.push({ id: call.id, name: call.name, response: out.response });
   }

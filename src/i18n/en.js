@@ -29,7 +29,7 @@ export default {
     womanSub: 'A short check every day, in your language.',
     asha: 'I’m an ASHA',
     ashaSub: 'See who needs you today.',
-    private: 'Your answers stay on this phone.',
+    private: 'Your details stay on this phone. Your talks with Ayu are saved without your name or number, to help improve Ayu.',
   },
 
   start: {

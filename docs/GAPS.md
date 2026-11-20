@@ -46,6 +46,8 @@ Also for review:
 | **Her first words while the call connects** (about 3–6 s). | The screen says "Connecting to Ayu…" and Ayu greets her first. Holding her early audio and sending it when the socket opened was tried on 21 Nov and made transcription worse, so it was taken out. |
 | **Voice for drafted sets.** | Read aloud with the phone's own voice where the phone has one for that language; the send screen says so only when it is true. |
 | **Rate limits** are per server instance. | The hard limit is the Gemini quota in Google Cloud. |
+| **App Check on the research store.** | Anyone with the public web key can add junk records to `talks`. The rules limit the fields, not who writes. See [`RESEARCH-DATA.md`](RESEARCH-DATA.md). |
+| **Names said aloud in transcripts.** | Research records hold the transcription text. If she says her name, village or number, it can be in `turns`. Nothing removes it. |
 | **GitHub Pages workflow** has failed since 16 Nov (it ends in 3 s, before the build). | The Vercel deploy is the live site. |
 
 ## Checked live (20 Nov 2026)
@@ -59,5 +61,7 @@ Headless Chrome, recorded speech as the microphone, real Gemini:
 - 21 Nov: Tell Ayu as a real conversation (5-minute call, camera dock): one multi-turn English call with the camera on → Ayu said what it saw, asked about vision and belly pain, did not record "no bleeding", ended the call itself → headache + feet swollen → See a doctor today.
 - One phone, both roles: she signs up → the phone is also set up for an ASHA → the ASHA does today's check with her and lands back on her page → "Open her app" returns to her Home, Tell Ayu and Help now.
 - A hand-made approved set whose "pad soaked in an hour" answer was marked Fine still gave Call 108 (the fixed rule).
+
+Live test (21 Nov): pending. The daily check on the video call (`/call`, `show_question` / `record_answer`, hand-off to `/check`) and the research store have unit tests (`test/check-call.test.js`, `test/research.test.js`) only. Results of Om's phone test will be added here.
 
 Not checked: a real phone (iOS Safari audio start, Android install), the camera frames reaching the model, a dropped connection mid-talk, the other seven languages by voice.

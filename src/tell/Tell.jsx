@@ -21,6 +21,11 @@ import { tellEntry } from './entry.js';
 import { checkLive } from '../live/server.js';
 import { signPic } from '../patient/pics.jsx';
 import { requestMic, takeTell, openCamera, stopStream } from '../live/media.js';
+import { questionText, optionText } from '../ui/words.js';
+import { picFor, hasPictures } from '../patient/pics.jsx';
+import { handCheckOver } from '../patient/handoff.js';
+import { saveResearch } from '../research.js';
+import { UNSURE } from '../../shared/question-sets.js';
 import { nextPhase, LIVE_PHASES } from '../live/phase.js';
 import './tell.css';
 
@@ -40,9 +45,17 @@ function profileOf(woman) {
   return { name: woman.name, stage: woman.stage, weeks: ctx.weeks, daysAfterBirth: ctx.daysAfterBirth, village: woman.village };
 }
 
-export function TellScreen() {
+/**
+ * @param {{mode?: 'tell'|'check'}} props  'check' = today's daily check, asked by Ayu on the call
+ */
+export function TellScreen({ mode = 'tell' }) {
   const { t, lang } = useT();
-  const { woman, addEntry, role } = useStore();
+  const { woman, addEntry, role, qset } = useStore();
+  const checkMode = mode === 'check';
+  const [q, setQ] = useState(null); // question on screen (check mode)
+  const [answers, setAnswers] = useState({}); // check mode
+  const runRef = useRef(null); // the last finished call (turns, timings) for the research record
+  const startedAtRef = useRef(0);
   const [phase, setPhase] = useState('idle');
   const [micOff, setMicOff] = useState(false);
   const [fail, setFail] = useState(null); // reason
@@ -117,10 +130,23 @@ export function TellScreen() {
       case 'tick':
         setSecs(e.secs);
         break;
+      case 'show':
+        setQ(e.q);
+        break;
+      case 'answer':
+        setAnswers((prev) => ({ ...prev, [e.q]: e.o }));
+        break;
       case 'finish':
+        runRef.current = e;
+        if (e.answers) setAnswers(e.answers);
         levelRef.current = 0;
         stopStream(micRef.current);
         micRef.current = null;
+        // A check with nothing extra to confirm goes straight on; otherwise she confirms what Ayu heard.
+        if (checkMode && !e.symptoms.length) {
+          setTimeout(() => finishCheck(e.answers || {}, [], e), 0);
+          break;
+        }
         setHeard({ text: e.heard, symptoms: e.symptoms });
         setOff(new Set());
         stopCam();
@@ -148,6 +174,10 @@ export function TellScreen() {
     setSecs(0);
     setHeard(null);
     setMicOff(false);
+    setQ(null);
+    setAnswers({});
+    runRef.current = null;
+    startedAtRef.current = Date.now();
 
     const m = await micPromise;
     if (stale()) return stopStream(m.audio);
@@ -167,7 +197,7 @@ export function TellScreen() {
     }
     if (stale()) return;
 
-    const engine = mod.createGeminiTalk({ profile: profileOf(woman), lang });
+    const engine = mod.createGeminiTalk({ profile: profileOf(woman), lang, check: checkMode ? checkPayload() : null });
     engineRef.current = engine;
     engine.on((e) => {
       if (engineRef.current === engine) onEvent(e);
@@ -196,10 +226,60 @@ export function TellScreen() {
 
   // ---- actions --------------------------------------------------------------
 
+  /** Today's questions in her language, for Ayu's prompt (cleaned again on the server). */
+  function checkPayload() {
+    return {
+      setId: qset.id,
+      questions: qset.questions.map((x) => ({ id: x.id, text: questionText(qset, x, t, lang), options: x.options.map((o) => ({ id: o.id, text: optionText(qset, x, o, t, lang) })) })),
+    };
+  }
+
+  /** One research record per finished (or cancelled) call. No name or phone. */
+  function research(extra) {
+    const run = runRef.current;
+    saveResearch({
+      at: startedAtRef.current || Date.now(),
+      lang,
+      stage: woman.stage,
+      weeks: ctx.weeks,
+      daysAfterBirth: ctx.daysAfterBirth,
+      turns: run?.turns || [],
+      camera: run?.camera,
+      endedBy: run?.by,
+      signs: run?.signs || [],
+      ...extra,
+    });
+  }
+
+  /** The check call ended: save it, or hand the questions she did not answer to the tap check. */
+  function finishCheck(all, keptSigns, run = runRef.current) {
+    teardown();
+    const left = qset.questions.filter((x) => all[x.id] === undefined);
+    if (left.length) {
+      research({ kind: 'call', setId: qset.id, answers: all, confirmed: keptSigns, level: 'unknown', endedBy: `${run?.by || 'end'}:unanswered` });
+      handCheckOver({ answers: all, extraSigns: keptSigns });
+      return swap('/check');
+    }
+    const r = assess({ set: qset, answers: all, extraSigns: keptSigns, ...ctx });
+    const e = addEntry({ womanId: woman.id, kind: 'check', via: 'call', setId: qset.id, setVersion: qset.version, answers: all, signs: r.signs, level: r.level, items: r.items, rule: r.rule, combo: r.combo, by: role === 'asha' ? 'asha' : 'self' });
+    research({ kind: 'call', setId: qset.id, answers: all, confirmed: keptSigns, level: r.level, rule: r.rule, items: r.items });
+    return swap(`/result/${e.id}`);
+  }
+
+  /** She tapped an answer on the card. */
+  function tapOption(qid, oid) {
+    const x = qset.questions.find((y) => y.id === qid);
+    if (!x) return;
+    setAnswers((prev) => ({ ...prev, [qid]: oid }));
+    const o = x.options.find((y) => y.id === oid);
+    engineRef.current?.tap(qid, oid, questionText(qset, x, t, lang), o ? optionText(qset, x, o, t, lang) : t('common.notSure'));
+  }
+
   /** From a tap: the getUserMedia call happens synchronously inside it (iOS). */
   const tapToSpeak = () => begin(requestMic());
 
   function cancel() {
+    if (startedAtRef.current && !runRef.current) research({ kind: checkMode ? 'call' : 'tell', setId: checkMode ? qset.id : null, answers: checkMode ? answers : null, level: 'unknown', endedBy: 'cancel' });
     teardown();
     setCam(null);
     go('/home');
@@ -207,14 +287,17 @@ export function TellScreen() {
 
   function save(what) {
     teardown();
-    const e = addEntry({ ...tellEntry(woman, what), by: role === 'asha' ? 'asha' : 'self' });
+    const entry = tellEntry(woman, what);
+    const e = addEntry({ ...entry, by: role === 'asha' ? 'asha' : 'self' });
+    research({ kind: what.quick ? 'quick' : 'tell', confirmed: what.signs || [], removed: (heard?.symptoms || []).filter((x, i) => off.has(rowKey(x, i))).map((x) => x.sign), level: entry.level, rule: entry.rule, items: entry.items });
     swap(`/result/${e.id}`);
   }
 
-  const pickQuick = (sign) => save({ signs: [sign], transcript: words.trim() });
+  const pickQuick = (sign) => save({ signs: [sign], transcript: words.trim(), quick: true });
 
   function confirm() {
     const kept = (heard?.symptoms || []).filter((s, i) => !off.has(rowKey(s, i)));
+    if (checkMode) return finishCheck(runRef.current?.answers || answers, kept.filter((x) => x.sign !== 'other').map((x) => x.sign));
     save({
       signs: kept.filter((s) => s.sign !== 'other').map((s) => s.sign),
       others: kept.filter((s) => s.sign === 'other').map((s) => s.her_words),
@@ -400,7 +483,17 @@ export function TellScreen() {
       {note && <p className="tell-ayu">{note}</p>}
 
       <div className="grow" />
-      {SESSION.has(phase) ? (
+      {checkMode && q && SESSION.has(phase) && (
+        <CheckCard set={qset} qid={q} answer={answers[q]} onPick={tapOption} t={t} lang={lang} n={qset.questions.findIndex((x) => x.id === q) + 1} total={qset.questions.length} />
+      )}
+      {checkMode && !SESSION.has(phase) ? (
+        /* No call (no mic, no internet, no key): the same check by tapping, no AI needed. */
+        <div className="dock">
+          <Btn kind="dark" onClick={() => swap('/check')}>
+            {t('tell.check.byTap')}
+          </Btn>
+        </div>
+      ) : SESSION.has(phase) ? (
         /* A live call: camera, mic and (when the camera is on) flip, where the thumb is.
            [Inferred: not on the boards] Same circle language as the rest of the app. */
         <div className="tell-call">
@@ -413,6 +506,30 @@ export function TellScreen() {
       )}
       <HelpBar />
     </Screen>
+  );
+}
+
+/** Today's question as a card over the call: picture answers she can tap while Ayu talks. */
+function CheckCard({ set, qid, answer, onPick, t, lang, n, total }) {
+  const q = set.questions.find((x) => x.id === qid);
+  if (!q) return null;
+  const pics = hasPictures(set, q);
+  return (
+    <div className="tc-card tell-in" role="group" aria-label={questionText(set, q, t, lang)}>
+      <span className="tc-count">{t('check.counter', { n, total })}</span>
+      <p className="tc-q">{questionText(set, q, t, lang)}</p>
+      <div className={`tc-opts ${pics ? 'pics' : ''}`}>
+        {q.options.map((o) => (
+          <button key={o.id} type="button" className="tc-opt" aria-pressed={answer === o.id} onClick={() => onPick(q.id, o.id)}>
+            {pics && <span className="tc-pic">{picFor(set, q, o)}</span>}
+            <span className="tc-label">{optionText(set, q, o, t, lang)}</span>
+          </button>
+        ))}
+        <button type="button" className="tc-opt unsure" aria-pressed={answer === UNSURE} onClick={() => onPick(q.id, UNSURE)}>
+          <span className="tc-label">{t('common.notSure')}</span>
+        </button>
+      </div>
+    </div>
   );
 }
 

@@ -70,6 +70,18 @@ export function languageRule(lang = 'en') {
 // It comes from the browser, so every field is cleaned before it reaches the prompt.
 // Bad values fall back to "not given"; nothing here rejects the request.
 
+/** A question or answer: the same, plus sentence marks (? , । — ! :). Still no brackets, quotes or newlines. */
+function cleanSentence(v, max) {
+  if (typeof v !== 'string') return '';
+  return v
+    .normalize('NFC')
+    .replace(/[^\p{L}\p{M}\p{N} .,'?!:।—-]+/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max)
+    .trim();
+}
+
 /** Letters (any script), marks, digits, space, . ' - only; no brackets, quotes or newlines. */
 function cleanText(v, max) {
   if (typeof v !== 'string') return '';
@@ -186,12 +198,102 @@ export function tellTools({ stage } = {}) {
   ];
 }
 
-/** Full LiveConnectConfig (plain JSON, so the server can lock it into a token). */
-export function buildTellConfig({ profile, lang = 'en' }) {
+// ---- The daily check on the call -------------------------------------------
+
+/**
+ * The question set sent by the phone (already in her language), cleaned for the prompt:
+ * at most 10 questions of 2–5 answers, short plain text, ids of letters/digits only.
+ * @returns {{setId: string, questions: {id: string, text: string, options: {id: string, text: string}[]}[]}|null}
+ */
+export function cleanCheck(raw) {
+  if (!raw || typeof raw !== 'object' || !Array.isArray(raw.questions)) return null;
+  const id = (v) => (typeof v === 'string' && /^[a-z0-9_]{1,20}$/i.test(v) ? v : null);
+  const seen = new Set();
+  const questions = raw.questions
+    .slice(0, 10)
+    .map((q) => {
+      const qid = id(q?.id);
+      const text = cleanSentence(q?.text, 140);
+      if (!qid || seen.has(qid) || !text) return null;
+      seen.add(qid);
+      const opts = (Array.isArray(q.options) ? q.options : [])
+        .slice(0, 5)
+        .map((o) => ({ id: id(o?.id), text: cleanSentence(o?.text, 60) }))
+        .filter((o) => o.id && o.text && o.id !== 'unsure');
+      return opts.length >= 2 ? { id: qid, text, options: opts } : null;
+    })
+    .filter(Boolean);
+  return questions.length ? { setId: id(raw.setId) || 'set', questions } : null;
+}
+
+/** The daily check, asked on the video call. */
+export function checkPrompt({ profile, lang = 'en', check }) {
+  const L = languageRule(lang);
+  const list = check.questions
+    .map((q, i) => `${i + 1}. [${q.id}] ${q.text}\n   answers: ${q.options.map((o) => `[${o.id}] ${o.text}`).join(' · ')} · [unsure] Not sure`)
+    .join('\n');
+  return `You are Ayu, a calm health companion in India for pregnant women and new mothers.
+This is her daily check, done as a live voice and video call. Her phone shows each question as a card with picture answers she can tap, while you talk with her.
+
+About her
+${profileLines(profile)}
+
+Language
+- She chose ${L.name} in the app. Speak ${L.name}${L.style}. Switch only if SHE speaks to you in another language.
+- When you write her_words, keep her own words exactly as she said them${L.script}.
+
+Today's questions (ask ALL of them, in this order)
+${list}
+
+How the call goes
+- Greet her by name in one short sentence, then go straight to question 1.
+- For each question: call show_question with its id AND ask it aloud in the same turn, in your own short words. Read the answers aloud only if she seems unsure.
+- She answers by tapping the card or by speaking. A tap arrives as an app note "[She tapped …]": accept it and move on. If she answers by voice, call record_answer with the closest answer id; if it is not clear, ask once more; if she does not know, use "unsure".
+- "Not sure" is fine. You may ask her to show it on the camera (her feet, her hands, the baby's skin); say in one short sentence what you see, never a diagnosis, then let her pick the answer.
+- Between questions you may react briefly and kindly, and answer a short question of hers in plain words. Keep each reply to one or two sentences. She can interrupt you.
+- If she mentions something else she has (not in the questions), call record_symptom with her words.
+- When every question is answered (record_answer tells you what is left), ask "anything else?", then say in one sentence that you will now check her answers, and call finish_talk.
+
+Never
+- Never say whether an answer is serious, never give or hint at a level, never say "go to a doctor" or "it is fine". The next screen tells her, from fixed rules.
+- Never diagnose, never list possible conditions, never give odds.
+- Never tell her to take, stop or change any medicine.
+- Never ask for her Aadhaar, bank details or OTP.
+- No disclaimers like "this is not medical advice".
+
+App notes
+- Lines in [square brackets] come from the app, not from her. Follow them.`;
+}
+
+/** Tools for the daily check on the call: the Tell Ayu tools plus show_question and record_answer. */
+export function checkTools({ stage, check }) {
+  const qids = check.questions.map((q) => q.id);
+  const oids = [...new Set(check.questions.flatMap((q) => q.options.map((o) => o.id))), 'unsure'];
+  return [
+    {
+      name: 'show_question',
+      description: 'Show one question of today\'s check as a card on her phone. Call it in the same turn as you ask the question aloud.',
+      parameters: { type: 'OBJECT', properties: { question_id: { type: 'STRING', enum: qids } }, required: ['question_id'] },
+    },
+    {
+      name: 'record_answer',
+      description: 'Save her spoken answer to one question. Not needed when she tapped (the app saves taps).',
+      parameters: {
+        type: 'OBJECT',
+        properties: { question_id: { type: 'STRING', enum: qids }, option_id: { type: 'STRING', enum: oids, description: 'The answer id from the list, or "unsure".' } },
+        required: ['question_id', 'option_id'],
+      },
+    },
+    ...tellTools({ stage }),
+  ];
+}
+
+/** Full LiveConnectConfig (plain JSON, so the server can lock it into a token). With `check`, the daily check on the call. */
+export function buildTellConfig({ profile, lang = 'en', check = null }) {
   return {
     responseModalities: ['AUDIO'],
-    systemInstruction: tellPrompt({ profile, lang }),
-    tools: [{ functionDeclarations: tellTools({ stage: profile?.stage }) }],
+    systemInstruction: check ? checkPrompt({ profile, lang, check }) : tellPrompt({ profile, lang }),
+    tools: [{ functionDeclarations: check ? checkTools({ stage: profile?.stage, check }) : tellTools({ stage: profile?.stage }) }],
     inputAudioTranscription: {},
     outputAudioTranscription: {},
     // Audio+video sessions are short without compression.
@@ -205,7 +307,8 @@ export function buildTellConfig({ profile, lang = 'en' }) {
 // ---- App notes sent during the session -------------------------------------
 
 /** First message after connect (the model speaks first). */
-export function openingNudge(lang = 'en') {
+export function openingNudge(lang = 'en', check = false) {
+  if (check) return `[Her daily check call has started. Greet her by name in ${LANG_NAME[lang] || 'English'} in one short sentence, then show and ask question 1.]`;
   return `[She opened Tell Ayu. Greet her by name in ${LANG_NAME[lang] || 'English'} in one short sentence and ask how she is feeling today. Then talk with her.]`;
 }
 
@@ -219,3 +322,8 @@ export const TIME_NUDGE = '[Time check: 30 seconds left. Record anything she sai
 export const CAMERA_ON_NUDGE =
   '[She turned on her camera to show you something. Frames follow, about one per second. Say in one short sentence what you see, never a diagnosis. If you see a face or a private body part, ask her to point the camera away.]';
 export const CAMERA_OFF_NUDGE = '[She turned the camera off.]';
+
+/** She tapped an answer on the card. */
+export function tappedNudge(qText, oText, left) {
+  return `[She tapped the answer "${oText}" for "${qText}". It is saved. ${left.length ? `Still to ask: ${left.join(', ')}. Go on to the next one.` : 'All questions are answered: ask "anything else?", then finish.'}]`;
+}

@@ -25,7 +25,7 @@ export function HelpBar() {
 }
 
 /** 1 · Home — today's state as light, one coral action, three quiet rows. */
-export function HomeScreen({ onTell }) {
+export function HomeScreen({ onTell, onCheck }) {
   const { t, lang } = useT();
   const { woman, ctx, qset, entries, role } = useStore();
   const [langOpen, setLangOpen] = useState(false);
@@ -73,7 +73,7 @@ export function HomeScreen({ onTell }) {
           <Row
             label={t('home.check')}
             value={td.check ? t(`home.checkDone.${td.check.level}`) : t('home.checkTodo', { n: qset.questions.length })}
-            onClick={() => go('/check')}
+            onClick={onCheck}
             action={
               <span className={`circle ${td.check ? 'line' : 'dark'}`} style={{ width: 52, height: 52 }} role="img" aria-label={td.check ? t('home.checkAgain') : t('home.checkStart')}>
                 <Icon name={td.check ? 'redo' : 'arrow'} />

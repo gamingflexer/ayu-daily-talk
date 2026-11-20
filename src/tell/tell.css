@@ -453,3 +453,110 @@ html[data-script='indic'] .tell-nothing {
   color: #fff;
   text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
 }
+
+/* Daily check on the call: the question card above the call dock. */
+.tc-card {
+  margin: 0 var(--side) 12px;
+  padding: 14px 12px 12px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--ink);
+  box-shadow: 0 12px 32px rgba(50, 40, 38, 0.14);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tc-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  padding: 0 8px;
+}
+html[data-script='indic'] .tc-count {
+  font-family: var(--font);
+  font-size: 13px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.tc-q {
+  font-size: 19px;
+  line-height: 24px;
+  font-weight: 700;
+  padding: 0 8px 4px;
+}
+html[data-script='indic'] .tc-q {
+  line-height: 30px;
+}
+.tc-opts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+.tc-opts.pics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.tc-opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 6px 12px;
+  border-radius: 18px;
+  background: var(--sand);
+  border: 3px solid transparent;
+  text-align: start;
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: 600;
+}
+.tc-opts.pics .tc-opt {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 5px 5px 8px;
+}
+.tc-opts.pics .tc-opt.unsure {
+  grid-column: span 2;
+  flex-direction: row;
+  justify-content: center;
+  min-height: 44px;
+  padding: 6px 12px;
+}
+.tc-opt[aria-pressed='true'] {
+  border-color: var(--ink);
+  background: var(--white);
+}
+.tc-pic {
+  height: 72px;
+  border-radius: 999px 999px 12px 12px;
+  overflow: hidden;
+  background: #e6d6c8;
+}
+.tc-pic img,
+.tc-pic svg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.tc-label {
+  padding: 0 4px;
+}
+html[data-script='indic'] .tc-label {
+  line-height: 26px;
+}
+/* While a question is up the rings step back so the card and the call dock fit. */
+.tellscr:has(.tc-card) .tell-rings {
+  transform: scale(0.62);
+  margin: -40px 0 -46px;
+}
+.tellscr:has(.tc-card) .tell-words {
+  font-size: 18px;
+  line-height: 24px;
+  min-height: 0;
+  padding-top: 4px;
+}
+.tellscr:has(.tc-card) .tell-ayu {
+  display: none;
+}
