@@ -31,7 +31,8 @@ export const SIGNS = {
   // after birth (mother)
   heavy_bleeding: { group: 'postnatal' },
   foul_discharge: { group: 'postnatal' },
-  very_low_mood: { group: 'postnatal' },
+  // Low mood matters in pregnancy too (it is one of the Tell Ayu quick taps), so it applies at every stage.
+  very_low_mood: { group: 'any' },
   // newborn
   baby_yellow_skin: { group: 'newborn' },
   baby_poor_feeding: { group: 'newborn' },

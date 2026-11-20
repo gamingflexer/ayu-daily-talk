@@ -1,0 +1,413 @@
+/* Tell Ayu — listening and heard (Vrindar: "5 · Tell Ayu — listening", prototype Heard).
+   Values are the board's; tokens from src/styles.css. Motion: transform and opacity only. */
+
+.tellscr .top .mono {
+  min-width: 0;
+}
+.tell-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.tell-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--coral);
+  opacity: 0.45;
+}
+.tell-dot.on {
+  opacity: 1;
+  animation: tell-blink 1.2s ease-in-out infinite alternate;
+}
+@keyframes tell-blink {
+  to {
+    opacity: 0.35;
+  }
+}
+.tell-actions {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+.tell-actions .circle:disabled,
+.tell-cam-row .circle:disabled {
+  opacity: 0.5;
+}
+
+/* ---------- rings and the one button ---------- */
+.tell-rings {
+  position: relative;
+  width: 196px;
+  height: 196px;
+  margin: 72px auto 0;
+  flex: none;
+}
+.tell-cam-row + .tell-rings {
+  margin-top: 40px;
+}
+.tell-ring {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.tell-ring.outer {
+  inset: 0;
+  background: rgba(255, 255, 255, 0.35);
+  will-change: transform;
+}
+.tell-ring.inner {
+  inset: 20px;
+  background: rgba(255, 255, 255, 0.45);
+}
+.tell-stop {
+  position: absolute;
+  top: 38px;
+  left: 38px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: var(--coral);
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 16px 40px rgba(193, 58, 32, 0.3);
+  transition: transform 100ms var(--ease), opacity 300ms;
+}
+.tell-stop:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.tell-stop:disabled:active {
+  transform: none;
+}
+.tell-square {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--white);
+}
+
+/* ---------- her words, Ayu's line ---------- */
+.tell-words {
+  min-height: 132px;
+  padding: 36px 28px 0;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+html[data-script='indic'] .tell-words {
+  line-height: 38px;
+}
+.tell-hint {
+  color: var(--ink-3);
+}
+.tell-fail {
+  display: block;
+  font-size: 20px;
+  line-height: 28px;
+}
+html[data-script='indic'] .tell-fail {
+  line-height: 34px;
+}
+.tell-ayu {
+  padding: 10px 28px 0;
+  font-size: 16px;
+  line-height: 23px;
+  color: var(--fg-2);
+  text-align: center;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+html[data-script='indic'] .tell-ayu {
+  line-height: 26px;
+}
+
+/* ---------- quick taps ---------- */
+.tell-small {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--fg-2);
+}
+.tell-quick {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 0 16px;
+}
+.tell-quick > .tell-small {
+  padding: 0 24px;
+}
+.tell-quick-row {
+  display: flex;
+  gap: 12px;
+  padding: 0 20px 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.tell-quick-row::-webkit-scrollbar {
+  display: none;
+}
+/* inside the Heard dock the row runs to the screen edge */
+.tell-quick.flush {
+  margin: 0 calc(-1 * var(--side));
+  padding: 4px 0;
+}
+.tell-quick.flush > .tell-small {
+  padding: 0 calc(var(--side) + 8px);
+}
+.tell-pill {
+  flex: none;
+  width: 88px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: transform 100ms var(--ease);
+}
+.tell-pill-ring {
+  width: 88px;
+  height: 112px;
+  border-radius: 999px;
+  background: var(--white);
+  border: 3px solid var(--lv1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tell-pill-ring[data-level='0'] {
+  border-color: var(--lv0);
+}
+.tell-pill-ring[data-level='2'] {
+  border-color: var(--lv2);
+}
+.tell-pill-ring[data-level='3'] {
+  border-color: var(--lv3);
+}
+.tell-pill-in {
+  width: 74px;
+  height: 98px;
+  border-radius: 999px;
+}
+.tell-pill-label {
+  font-size: 14px;
+  line-height: 18px;
+  font-weight: 600;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+html[data-script='indic'] .tell-pill-label {
+  line-height: 22px;
+}
+
+/* The board's photo slots: tint only (no photos yet). */
+.tellscr [data-tint='0'] {
+  background: #e6d6c8;
+}
+.tellscr [data-tint='1'] {
+  background: #e3dcd3;
+}
+.tellscr [data-tint='2'] {
+  background: #eacfc1;
+}
+.tellscr [data-tint='3'] {
+  background: #e8d3c4;
+}
+
+/* ---------- camera (not drawn yet: full-bleed video + scrim, content on top) ---------- */
+.screen.tellscr.cam {
+  --bg: var(--night);
+  --fg: var(--night-ink);
+  --fg-2: var(--night-2);
+}
+.screen.tellscr > .tell-video.tell-video {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  animation: tell-fade 300ms var(--ease);
+}
+.tell-video video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.tell-video video.mirror {
+  transform: scaleX(-1);
+}
+.tell-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(23, 19, 26, 0.6) 0%,
+    rgba(23, 19, 26, 0.2) 28%,
+    rgba(23, 19, 26, 0.45) 55%,
+    rgba(23, 19, 26, 0.85) 100%
+  );
+}
+.tellscr.cam .tell-hint {
+  color: var(--night-2);
+}
+.tellscr.cam .tell-words {
+  text-shadow: 0 1px 12px rgba(23, 19, 26, 0.5);
+}
+.tellscr.cam .tell-ring.outer {
+  background: rgba(255, 255, 255, 0.18);
+}
+.tellscr.cam .tell-ring.inner {
+  background: rgba(255, 255, 255, 0.26);
+}
+.tell-cam-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px 0 24px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--fg-2);
+}
+
+/* ---------- heard ---------- */
+.tell-quote {
+  padding: 28px 24px 0;
+  font-size: 26px;
+  line-height: 34px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+html[data-script='indic'] .tell-quote {
+  line-height: 40px;
+}
+.tell-dock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 var(--side) var(--bottom);
+}
+.tell-dock > .tell-small {
+  padding: 0 8px 2px;
+}
+.tell-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 18px 8px 8px;
+  border-radius: 28px;
+  background: var(--white);
+  color: var(--ink);
+  text-align: start;
+  transition: opacity 300ms, transform 100ms var(--ease);
+}
+.tell-row[aria-pressed='false'] {
+  opacity: 0.5;
+}
+.tell-arch {
+  width: 56px;
+  height: 56px;
+  flex: none;
+  border-radius: 999px 999px 14px 14px;
+}
+.tell-row-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+html[data-script='indic'] .tell-row-label {
+  line-height: 30px;
+}
+.tell-row[aria-pressed='false'] .tell-row-label {
+  text-decoration: line-through;
+}
+.tell-tick {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tell-row[aria-pressed='false'] .tell-tick {
+  background: var(--hair);
+}
+.tell-yes {
+  margin-top: 4px;
+}
+.btn.ghost.tell-again {
+  min-height: 52px;
+  font-size: 17px;
+}
+.tell-nothing {
+  padding: 0 8px;
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 600;
+}
+html[data-script='indic'] .tell-nothing {
+  line-height: 32px;
+}
+
+.tell-in {
+  animation: tell-fade 300ms var(--ease);
+}
+@keyframes tell-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Short phones (360×640): keep the quick taps and Help now in view. */
+@media (max-height: 720px) {
+  .tell-rings {
+    margin-top: 28px;
+  }
+  .tell-cam-row + .tell-rings {
+    margin-top: 16px;
+  }
+  .tell-words {
+    min-height: 92px;
+    padding-top: 20px;
+  }
+  .tell-quick {
+    padding-top: 8px;
+  }
+}
+@media (max-width: 359px) {
+  .tell-rings {
+    margin-top: 48px;
+  }
+  .tell-words {
+    font-size: 22px;
+    line-height: 30px;
+  }
+}
+
+/* Photos inside the pill and the arch */
+.tell-pill-in,
+.tell-arch {
+  overflow: hidden;
+}
+.tell-pill-in img,
+.tell-arch img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}

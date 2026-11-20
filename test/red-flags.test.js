@@ -1,9 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { evaluate, escalate, mentionsStoppingMedicine } from '../shared/red-flags.js';
-import { createTalkState, handleTool, recordAnswer, referral } from '../shared/talk-state.js';
-import { getPersona } from '../shared/personas.js';
-import { buildLiveConfig } from '../shared/live-config.js';
 
 test('no signs → none', () => {
   assert.equal(evaluate({ signs: [], weeks: 24 }).level, 'none');
@@ -43,28 +40,33 @@ test('the model can raise a level but never lower it', () => {
   assert.equal(escalate('see_today', 'bogus'), 'see_today');
 });
 
-test('talk state: tapped danger signs reach the rules without the model', () => {
-  const s = createTalkState(getPersona('sunita'));
-  const { card } = handleTool(s, 'ask_multi_choice', {
-    question: 'Any of these today?',
-    options: [
-      { label: 'Headache that won’t go', sign: 'severe_headache' },
-      { label: 'Swelling of face or hands', sign: 'swelling_face_hands' },
-    ],
-  });
-  const r = recordAnswer(s, card, ['Headache that won’t go', 'Swelling of face or hands']);
-  assert.equal(r.level, 'see_today');
-  // add_referral with a lower level changes nothing
-  handleTool(s, 'add_referral', { level: 'watch', reason: 'test' });
-  assert.equal(referral(s).level, 'see_today');
+test('two danger signs together → see today, whoever reported them', () => {
+  assert.equal(evaluate({ signs: ['severe_headache', 'swelling_face_hands'], weeks: 34, stage: 'pregnant' }).level, 'see_today');
 });
 
-test('talk state: add_referral raises', () => {
-  const s = createTalkState(getPersona('sunita'));
-  handleTool(s, 'add_referral', { level: 'see_today', reason: 'BP trend rising' });
-  const r = referral(s);
+test('vomiting, can’t keep food down → see today (from elder.test.js)', () => {
+  const r = evaluate({ signs: ['vomiting_no_food'] });
   assert.equal(r.level, 'see_today');
-  assert.equal(r.raisedByModel, true);
+  assert.equal(r.rule, 'alone:vomiting_no_food');
+});
+
+test('dehydration or severe belly pain alone → see today; fever and fits apply at any stage (from elder.test.js)', () => {
+  assert.equal(evaluate({ signs: ['dehydration'] }).level, 'see_today');
+  assert.equal(evaluate({ signs: ['severe_abdominal_pain'], stage: 'postnatal' }).level, 'see_today');
+  assert.equal(evaluate({ signs: ['fever'], stage: 'pregnant' }).level, 'see_today');
+  assert.equal(evaluate({ signs: ['convulsions'], stage: 'postnatal' }).level, 'emergency');
+});
+
+test('week 34: puffy feet alone → watch; with a headache that won’t go → see today, the after-20-weeks pair', () => {
+  assert.equal(evaluate({ signs: ['swelling_feet'], weeks: 34, stage: 'pregnant' }).level, 'watch');
+  const r = evaluate({ signs: ['swelling_feet', 'severe_headache'], weeks: 34, stage: 'pregnant' });
+  assert.equal(r.level, 'see_today');
+  assert.ok(r.reasons.includes('severe_headache+swelling_feet'));
+});
+
+test('stage limits the rules: newborn signs do not apply in pregnancy', () => {
+  assert.equal(evaluate({ signs: ['baby_yellow_skin'], stage: 'pregnant' }).level, 'none');
+  assert.equal(evaluate({ signs: ['baby_yellow_skin'], stage: 'postnatal', daysAfterBirth: 5 }).level, 'see_today');
 });
 
 test('stop-medicine phrases are flagged, safe phrases are not', () => {
@@ -73,15 +75,4 @@ test('stop-medicine phrases are flagged, safe phrases are not', () => {
   assert.equal(mentionsStoppingMedicine("Don't stop the tablet, take it after food."), false);
   assert.equal(mentionsStoppingMedicine('गोली बंद कर दो'), true);
   assert.equal(mentionsStoppingMedicine('गोली बंद मत करना'), false);
-});
-
-test('live config is plain JSON with all tools', () => {
-  const cfg = buildLiveConfig({ persona: getPersona('reena'), lang: 'hi' });
-  const json = JSON.parse(JSON.stringify(cfg));
-  const names = json.tools[0].functionDeclarations.map((f) => f.name);
-  for (const n of ['ask_yes_no', 'ask_single_choice', 'ask_multi_choice', 'ask_photo', 'record_symptom', 'red_flag_check']) {
-    assert.ok(names.includes(n), n);
-  }
-  assert.match(json.systemInstruction, /Reena/);
-  assert.match(json.systemInstruction, /Never tell her to stop/);
 });

@@ -1,15 +1,13 @@
-// Gemini Live session config: model, system prompt and tools.
-// Shared by the token server (which locks it into the ephemeral token) and
-// the browser (which sends the same config when it connects).
+// Gemini Live session config for "Tell Ayu": model, system prompt and tools.
+// The token server (server/lib/api.js) builds it from her cleaned profile and
+// locks it into the ephemeral token; the browser connects with the same config.
 //
 // Checked against the Live API docs on 12 Nov 2026:
 //   model ids  https://aistudio.google.com/docs/live-api/capabilities
 //   tokens     https://aistudio.google.com/docs/live-api/ephemeral-tokens
 //   tools      https://aistudio.google.com/docs/live-api/tools
 
-import { SIGNS } from './red-flags.js';
-import { personaContext } from './personas.js';
-import { PLAN_ITEMS, DURATIONS, SEVERITIES, BODY_AREAS } from './talk-state.js';
+import { signsFor, SEVERITY } from './talk-state.js';
 
 export const DEFAULT_MODEL = 'gemini-3.8-live';
 export const API_VERSION = 'v1beta';
@@ -18,10 +16,9 @@ export const API_VERSION = 'v1beta';
 export const AUDIO_IN = { sampleRate: 16000, mimeType: 'audio/pcm;rate=16000' };
 export const AUDIO_OUT = { sampleRate: 24000 };
 
-/** Pictures the UI can show for pick-the-picture answers (Om's rule 3). */
-export const PICTURE_SETS = ['feet_swelling', 'baby_skin_colour', 'stool_colour', 'medicine_strip', 'stomach_upset'];
-
-export const PHOTO_PURPOSES = ['medicine_strip', 'skin_patch', 'feet', 'document'];
+/** A Tell Ayu session: nudge to wrap up at 2:30, hard stop at 3:00. */
+export const TELL_SECONDS = 180;
+export const TELL_NUDGE_AT = 150;
 
 /** Every language the app offers. The token server accepts exactly these codes. */
 export const LANG_NAME = {
@@ -36,7 +33,7 @@ export const LANG_NAME = {
   ml: 'Malayalam',
 };
 
-/** Script each language is written in (cards must use it, never Latin transliteration). */
+/** Script each language is written in. */
 export const LANG_SCRIPT = {
   en: 'Latin',
   hi: 'Devanagari',
@@ -69,268 +66,153 @@ export function languageRule(lang = 'en') {
   return { name, style, script };
 }
 
-/** First message after connect (the model speaks first). */
-export function openingNudge(lang = 'en', persona = null) {
-  const L = LANG_NAME[lang] || 'English';
-  // A persona with a focus for today (the two demos): greet in one short line, then ask the focus
-  // question with its card in the same turn, without waiting for her to answer the greeting.
-  const hasFocus = Boolean(persona && (persona.focus || (persona.medicines || []).some((m) => m.isNew)));
-  if (hasFocus) {
-    return `[The talk has started. Greet her by name in ${L} in one short sentence, then straight away, in the same turn, ask today's focus question from her context with its card. Do not wait for her to answer the greeting.]`;
-  }
-  return `[The talk has started. Greet her by name in ${L} and ask how she is today. This greeting is voice only: no card.]`;
+// ---- Her profile -----------------------------------------------------------
+// It comes from the browser, so every field is cleaned before it reaches the prompt.
+// Bad values fall back to "not given"; nothing here rejects the request.
+
+/** Letters (any script), marks, digits, space, . ' - only; no brackets, quotes or newlines. */
+function cleanText(v, max) {
+  if (typeof v !== 'string') return '';
+  return v
+    .normalize('NFC')
+    .replace(/[^\p{L}\p{M}\p{N} .'-]+/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, max)
+    .trim();
 }
 
-export function systemPrompt({ persona, lang = 'en' }) {
-  const L = languageRule(lang);
-  return `You are Ayu, a calm health companion in India for pregnant women, new mothers and older people on daily medicines.
-You are on a daily 5-minute talk with the woman below. You can hear her. Her front camera is usually on, so you may see her; never comment on her looks.
+function cleanInt(v, min, max) {
+  const n = typeof v === 'number' ? v : typeof v === 'string' && /^\d{1,3}$/.test(v.trim()) ? Number(v) : NaN;
+  return Number.isInteger(n) && n >= min && n <= max ? n : undefined;
+}
 
-${personaContext(persona)}
+/**
+ * @param {any} raw  {name, stage: 'pregnant'|'postnatal', weeks?, daysAfterBirth?, village?}
+ * @returns {{name: string, stage: 'pregnant'|'postnatal'|null, weeks?: number, daysAfterBirth?: number, village: string}}
+ */
+export function cleanProfile(raw) {
+  const p = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const stage = p.stage === 'pregnant' || p.stage === 'postnatal' ? p.stage : null;
+  const out = { name: cleanText(p.name, 40), stage, village: cleanText(p.village, 40) };
+  if (stage === 'pregnant') {
+    const weeks = cleanInt(p.weeks, 1, 42);
+    if (weeks !== undefined) out.weeks = weeks;
+  }
+  if (stage === 'postnatal') {
+    const days = cleanInt(p.daysAfterBirth, 0, 400);
+    if (days !== undefined) out.daysAfterBirth = days;
+  }
+  return out;
+}
+
+/** Her profile as prompt lines (profile already cleaned). */
+export function profileLines(profile) {
+  const p = profile || {};
+  const lines = [`- Name: ${p.name || 'not given (do not use a name)'}`];
+  if (p.stage === 'pregnant') lines.push(`- Pregnant${p.weeks ? `, week ${p.weeks}` : ''}.`);
+  else if (p.stage === 'postnatal') {
+    const d = p.daysAfterBirth;
+    lines.push(`- Gave birth${d === undefined ? ' recently' : d === 0 ? ' today' : ` ${d} day${d === 1 ? '' : 's'} ago`}; she may talk about herself or her baby.`);
+  } else lines.push('- Pregnant or a new mother (not given which).');
+  if (p.village) lines.push(`- Village: ${p.village}`);
+  return lines.join('\n');
+}
+
+// ---- Prompt and tools -------------------------------------------------------
+
+export function tellPrompt({ profile, lang = 'en' }) {
+  const L = languageRule(lang);
+  return `You are Ayu, a calm health companion in India for pregnant women and new mothers.
+She opened "Tell Ayu" on her phone because something feels different. Your job is to LISTEN and NOTE what she says, so the app can check it with fixed safety rules after she confirms it.
+
+About her
+${profileLines(profile)}
 
 Language
-- She chose ${L.name} in the app. Speak ${L.name}${L.style}, even though her profile lists another language. Switch only if SHE speaks to you in another language.
-- Write every card's question, options and explanation in ${L.name}${L.script}. Her own words (her_words) stay exactly as she said them.
+- She chose ${L.name} in the app. Speak ${L.name}${L.style}. Switch only if SHE speaks to you in another language.
+- When you write her_words, keep her own words exactly as she said them${L.script}.
 
-Shape of the talk (like a good Indian doctor taking a history)
-- Many short questions, one per turn: usually 10 to 40 in a talk, depending on what she says. Each one answerable in a tap or a few words. Short sentences.
-- One card at a time: ask it aloud, show it, then wait for her answer (a tap or her voice) before the next question. Never send several cards at once.
-- Voice only, NO card: greetings, open questions ("How are you today?", "How did you sleep?", "Tell me more"), small talk, and repeating back what she just said to confirm it.
-- A card (a tool call) for every closed question where tapping is faster than talking or the answer feeds the safety rules: yes/no, pick one, pick all, how long, how bad, where, which symptom, a picture, a photo. Say the question aloud AND call the tool in the same turn. Never ask a closed question aloud without its card.
-- Card tools: ask_yes_no, ask_single_choice, ask_multi_choice, ask_duration, ask_severity, ask_body_map, ask_symptom_search, ask_photo. A card question is one short question (at most 12 words), never advice or a statement. Give each card an "explain" line: one or two plain sentences answering "What does this mean?" for that question.
-- Keep talking while a card is on screen; she may tap or speak. A spoken answer counts as the answer: do not ask it again.
-- When she names a symptom, follow up with this bundle, one card each: since when (ask_duration), what makes it worse (ask_single_choice, 2–3 options), describe it (ask_single_choice with 2–3 ways to say it, her_words set), how bad (ask_severity, with sign set to severe_headache for a headache or severe_abdominal_pain for belly pain), and where for pain (ask_body_map). Skip any she already answered.
-- Then a quick run of yes/no danger-sign questions (one sign per card, sign set). "Not sure" is always there.
-- If she has a symptom you don't have a word for, or says "something else", use ask_symptom_search.
-- Always keep an honest way out: "Not sure" (yes/no), "I don't know" (how long), "Something else" (choices).
-- Swelling, yellow skin, stool colour or which tablet: ALWAYS ask with a picture_set (feet_swelling, baby_skin_colour, stool_colour, medicine_strip), e.g. ask_yes_no with picture_set feet_swelling and sign swelling_feet when she mentions swollen feet, so she can pick the picture that looks like hers. For how her stomach is on a new tablet, use ask_single_choice with picture_set stomach_upset. The app turns her back camera on for those cards by itself, so you may see the thing too.
-- Ask for a photo (ask_photo) only of a medicine strip or box, a face-free patch of skin, her feet, or a document. Never ask for private body parts or her face.
-- A yes/no card's "Not sure" is a camera button. When she taps it, her back camera turns on and you get video frames (about one per second). Say in one or two short sentences what you see (for example "I can see your ankles look puffy"), never a diagnosis, then ask her to confirm. Only look at the thing she was asked to show; if her face or a private body part is in view, ask her to point the camera away.
-- If she goes back and changes an answer ("[She went back and changed her answer…]"), use the new answer and say "Okay" — don't argue.
+How the talk goes
+- Start: greet her by name in ONE short sentence and ask what she is feeling. Then mostly listen.
+- Ask at most 3 short follow-up questions in the whole talk, one at a time, and only when it helps: since when, how bad, or anything else. Never a lecture, never a list of questions.
+- Keep every reply to one short sentence. Silence is fine; she may need time.
+- Call record_symptom for each thing SHE clearly says she has, with her own words. Pick the closest sign; if none fits, use "other". Never record something she says she does NOT have ("no bleeding" is not bleeding), and never record something only you asked about.
+- If she corrects herself, record the corrected thing; the app lets her remove anything wrong.
+- When she says she has nothing more (or after your "anything else?" she says no), say one short closing line, like "Thank you, I have noted it", and call finish_talk.
 
-Time
-- The talk is 5 minutes. Keep turns quick. When you get "[Time check: …]" drop the less important questions and go to the danger signs. On "[Time is nearly up]" wrap up; on "[Time is up]" call red_flag_check and finish_talk right away.
-
-Safety rules
-- After she answers a symptom question, call record_symptom with what SHE said (her words, not your question). In red_flag_check, extra_signs are only signs she clearly said she has.
-- After danger-sign questions, call red_flag_check. The fixed rules decide the referral, not you. Explain the result calmly in her language, with the reason in one line. If the result is see_today or emergency, say it in two or three sentences and then call finish_talk; the app shows her where to go.
-- If you are worried even though the rules said nothing, call add_referral. You can never cancel or lower a referral.
-- Pregnant after 20 weeks: when it fits, ask one birth-plan question (hospital, transport, who comes, money, bag, blood donor) and save her answer with update_plan.
-- When the talk is done, say "That's all for today" in her language, then call finish_talk with what you noted (short lines in her language) and any questions for her doctor.
+Camera
+- She may turn on her camera to show you something (feet, skin, a medicine strip). Frames come about once a second.
+- When it turns on, say in ONE short sentence what you see, for example "I can see your ankles look puffy". Never a diagnosis.
+- Only look at what she shows. If you see a face or a private body part, kindly ask her to point the camera away.
+- If what you see matches something she said, you may record it with her words; never record a sign from the picture alone.
 
 Never
-- Never diagnose, never list possible conditions, never give odds like "2 out of 10 people". Say "this can be a sign of …, a check today will tell".
-- Never tell her to stop, skip or change a medicine. If a medicine troubles her, give simple tips and say Ayu will ask the doctor.
-- Never recommend a painkiller or any medicine.
+- Never say whether it is serious, never give or hint at a level, never say "go to a doctor" or "it is fine". The next screen tells her what to do, from fixed rules.
+- Never diagnose, never list possible conditions, never give odds.
+- Never tell her to take, stop or change any medicine.
 - Never ask for her Aadhaar, bank details or OTP.
-- No disclaimers like "this is not medical advice"; the app already says so. Just say what to do next, kindly.
-- Danger signs (bleeding, fits, severe headache with swelling or blurred vision, baby moving less, water leaking, high fever, strong belly pain) always go through red_flag_check.
+- No disclaimers like "this is not medical advice".
 
-Start by greeting her by name in one line and asking how she is today (voice only).`;
+App notes
+- Lines in [square brackets] come from the app, not from her. Follow them.`;
 }
 
-const signEnum = Object.keys(SIGNS);
-
-/** Function declarations. `asyncTools` makes the card tools non-blocking so the voice keeps going. */
-export function toolDeclarations({ asyncTools = true } = {}) {
-  const card = asyncTools ? { behavior: 'NON_BLOCKING' } : {};
+/** Function declarations for a Tell Ayu session. */
+export function tellTools({ stage } = {}) {
   return [
     {
-      name: 'ask_yes_no',
-      description: 'Show a yes / no question card. A third "Not sure" answer is always shown; it opens the camera or a picture choice.',
-      ...card,
-      parameters: {
-        type: 'OBJECT',
-        properties: {
-          question: { type: 'STRING', description: 'The question, in her language, as you asked it.' },
-          not_sure_action: {
-            type: 'STRING',
-            enum: ['camera', 'pictures', 'none'],
-            description: 'What "Not sure" does: open the camera, show a picture_set, or nothing.',
-          },
-          picture_set: { type: 'STRING', enum: PICTURE_SETS },
-          sign: { type: 'STRING', enum: signEnum, description: 'The danger sign a "yes" means, if any.' },
-          explain: { type: 'STRING', description: 'One or two plain sentences for "What does this mean?", in her language.' },
-        },
-        required: ['question'],
-      },
-    },
-    {
-      name: 'ask_single_choice',
-      description: 'Show one-answer options (2–4) when she is unsure how to describe something. "Something else — I\'ll say it" is added automatically.',
-      ...card,
-      parameters: {
-        type: 'OBJECT',
-        properties: {
-          question: { type: 'STRING' },
-          her_words: { type: 'STRING', description: 'Her own words you are following up on, quoted.' },
-          options: { type: 'ARRAY', items: { type: 'STRING' }, description: '2–4 short options in her language.' },
-          picture_set: { type: 'STRING', enum: PICTURE_SETS, description: 'Show pictures instead of text options.' },
-          explain: { type: 'STRING', description: 'One or two plain sentences for "What does this mean?", in her language.' },
-        },
-        required: ['question'],
-      },
-    },
-    {
-      name: 'ask_multi_choice',
-      description: 'Show a tap-all-that-apply card, e.g. danger signs today. "None of these" is added automatically.',
-      ...card,
-      parameters: {
-        type: 'OBJECT',
-        properties: {
-          question: { type: 'STRING' },
-          options: {
-            type: 'ARRAY',
-            items: {
-              type: 'OBJECT',
-              properties: {
-                label: { type: 'STRING', description: 'Option text in her language.' },
-                sign: { type: 'STRING', enum: signEnum, description: 'Danger sign this option maps to, if any.' },
-              },
-              required: ['label'],
-            },
-          },
-          explain: { type: 'STRING', description: 'One or two plain sentences for "What does this mean?", in her language.' },
-        },
-        required: ['question', 'options'],
-      },
-    },
-    {
-      name: 'ask_duration',
-      description: `How long she has had something. Shows fixed chips (${DURATIONS.join(', ')}) plus "I don't know".`,
-      ...card,
-      parameters: {
-        type: 'OBJECT',
-        properties: {
-          question: { type: 'STRING', description: 'e.g. "Since when do you have this headache?", in her language.' },
-          explain: { type: 'STRING' },
-        },
-        required: ['question'],
-      },
-    },
-    {
-      name: 'ask_severity',
-      description: `How bad something is: ${SEVERITIES.join(' / ')}, each shown with a one-line definition (mild = can do daily work, severe = can't do anything).`,
-      ...card,
-      parameters: {
-        type: 'OBJECT',
-        properties: {
-          question: { type: 'STRING' },
-          sign: { type: 'STRING', enum: ['severe_headache', 'severe_abdominal_pain'], description: 'The danger sign a "Severe" answer means: severe_headache for a headache, severe_abdominal_pain for belly pain.' },
-          explain: { type: 'STRING' },
-        },
-        required: ['question'],
-      },
-    },
-    {
-      name: 'ask_body_map',
-      description: `Where it hurts: she taps an area on a simple body outline (${BODY_AREAS.join(', ')}).`,
-      ...card,
-      parameters: {
-        type: 'OBJECT',
-        properties: { question: { type: 'STRING' }, explain: { type: 'STRING' } },
-        required: ['question'],
-      },
-    },
-    {
-      name: 'ask_symptom_search',
-      description: 'A search box with suggestions from a fixed list of common symptoms in her language, for "anything else?" or a symptom she can\'t name.',
-      ...card,
-      parameters: {
-        type: 'OBJECT',
-        properties: { question: { type: 'STRING' }, explain: { type: 'STRING' } },
-        required: ['question'],
-      },
-    },
-    {
-      name: 'ask_photo',
-      description: 'Open the camera with a frame guide. Only medicine strips/boxes, face-free skin, feet or documents.',
-      ...card,
-      parameters: {
-        type: 'OBJECT',
-        properties: {
-          purpose: { type: 'STRING', enum: PHOTO_PURPOSES },
-          instruction: { type: 'STRING', description: 'One line on what to show and why, in her language.' },
-          explain: { type: 'STRING', description: 'One or two plain sentences for "What does this mean?", in her language.' },
-        },
-        required: ['purpose', 'instruction'],
-      },
-    },
-    {
       name: 'record_symptom',
-      description: 'Save a symptom she reported to her journey, with her own words and when it started.',
+      description: 'Note one thing she clearly said she has, with her own words. Call once per thing. Never for something she denied.',
       parameters: {
         type: 'OBJECT',
         properties: {
-          sign: { type: 'STRING', enum: [...signEnum, 'other'] },
-          her_words: { type: 'STRING' },
-          since: { type: 'STRING', description: 'When it started, e.g. "since morning", "3 days".' },
-          severity: { type: 'STRING', enum: ['mild', 'moderate', 'severe', 'unknown'] },
+          sign: { type: 'STRING', enum: [...signsFor(stage), 'other'], description: 'The closest sign, or "other" if none fits.' },
+          her_words: { type: 'STRING', description: 'What she said about it, in her own words and language.' },
+          since: { type: 'STRING', description: 'When it started, if she said, e.g. "since morning", "3 days".' },
+          severity: { type: 'STRING', enum: SEVERITY, description: 'How bad, only if she said.' },
         },
         required: ['sign', 'her_words'],
       },
     },
     {
-      name: 'red_flag_check',
-      description: 'Run the fixed red-flag rules on everything recorded in this talk. Returns the referral level. You must follow it.',
-      parameters: {
-        type: 'OBJECT',
-        properties: {
-          extra_signs: { type: 'ARRAY', items: { type: 'STRING', enum: signEnum }, description: 'Signs she said that were not recorded yet.' },
-        },
-      },
-    },
-    {
-      name: 'add_referral',
-      description: 'Raise the referral level if you are worried. Can only raise, never lower.',
-      parameters: {
-        type: 'OBJECT',
-        properties: {
-          level: { type: 'STRING', enum: ['watch', 'see_today', 'emergency'] },
-          reason: { type: 'STRING' },
-        },
-        required: ['level', 'reason'],
-      },
-    },
-    {
-      name: 'update_plan',
-      description: 'Save one item of her birth and travel plan from what she said (pregnant women only).',
-      parameters: {
-        type: 'OBJECT',
-        properties: {
-          item: { type: 'STRING', enum: PLAN_ITEMS },
-          value: { type: 'STRING', description: 'What she said, short, in her language, e.g. "CHC Mihinpurwa", "Raju\'s tempo".' },
-          ready: { type: 'BOOLEAN', description: 'True if this item is arranged; false if still to do.' },
-        },
-        required: ['item', 'value', 'ready'],
-      },
-    },
-    {
       name: 'finish_talk',
-      description: 'End the talk and show her today\'s summary and next step.',
-      parameters: {
-        type: 'OBJECT',
-        properties: {
-          noted: { type: 'ARRAY', items: { type: 'STRING' }, description: 'Short lines for "Ayu noted today", in her language.' },
-          questions_for_doctor: { type: 'ARRAY', items: { type: 'STRING' } },
-        },
-      },
+      description: 'She has nothing more to tell. Call after your one short closing line.',
+      parameters: { type: 'OBJECT', properties: {} },
     },
   ];
 }
 
 /** Full LiveConnectConfig (plain JSON, so the server can lock it into a token). */
-export function buildLiveConfig({ persona, lang = 'en', asyncTools = true }) {
+export function buildTellConfig({ profile, lang = 'en' }) {
   return {
     responseModalities: ['AUDIO'],
-    systemInstruction: systemPrompt({ persona, lang }),
-    tools: [{ functionDeclarations: toolDeclarations({ asyncTools }) }],
+    systemInstruction: tellPrompt({ profile, lang }),
+    tools: [{ functionDeclarations: tellTools({ stage: profile?.stage }) }],
     inputAudioTranscription: {},
     outputAudioTranscription: {},
-    // Audio+video sessions are short without compression; the talk is 5 min.
+    // Audio+video sessions are short without compression.
     contextWindowCompression: { slidingWindow: {} },
     realtimeInputConfig: {
       automaticActivityDetection: { silenceDurationMs: 700 },
     },
   };
 }
+
+// ---- App notes sent during the session -------------------------------------
+
+/** First message after connect (the model speaks first). */
+export function openingNudge(lang = 'en') {
+  return `[She opened Tell Ayu. Greet her by name in ${LANG_NAME[lang] || 'English'} in one short sentence and ask what she is feeling. Then listen.]`;
+}
+
+/** She pressed stop: note what is left, then finish, without talking. */
+export const STOP_NUDGE =
+  '[She pressed stop and has finished. If she said anything you have not recorded yet, call record_symptom for it now. Then call finish_talk. Do not ask anything more and do not speak.]';
+
+/** 30 seconds left. */
+export const TIME_NUDGE = '[Time check: 30 seconds left. Record anything she said with record_symptom, say one short closing line and call finish_talk.]';
+
+export const CAMERA_ON_NUDGE =
+  '[She turned on her camera to show you something. Frames follow, about one per second. Say in one short sentence what you see, never a diagnosis. If you see a face or a private body part, ask her to point the camera away.]';
+export const CAMERA_OFF_NUDGE = '[She turned the camera off.]';

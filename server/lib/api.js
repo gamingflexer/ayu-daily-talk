@@ -1,19 +1,19 @@
 // Framework-neutral API handlers. Express (server/index.js) and the Vercel
 // functions (api/*.js) both call `handleApi`, so the rules are the same.
 //
-//   GET  /api/health       is live mode on?
-//   POST /api/live-token   one-use Gemini Live ephemeral token (key stays here)
-//   POST /api/summary      optional short model-written doctor note
+//   GET  /api/health       is live mode on? + the short-lived page pass
+//   POST /api/live-token   one-use Gemini Live ephemeral token for "Tell Ayu" (key stays here)
+//        body {profile: {name, stage: 'pregnant'|'postnatal', weeks?, daysAfterBirth?, village?}, lang}
+//        → {token, model, apiVersion, config, expiresInSec}. The profile is cleaned
+//        (shared/live-config.js cleanProfile) before it reaches the prompt.
 //
-// Env: GEMINI_API_KEY, GEMINI_LIVE_MODEL, LIVE_ASYNC_TOOLS, ALLOWED_ORIGINS,
-//      LIVE_TOKEN_DAILY_CAP (200), LIVE_TOKEN_PER_MIN (6), SUMMARY_MODEL,
-//      SUMMARY_DAILY_CAP (300), SUMMARY_PER_MIN (10)
+// Env: GEMINI_API_KEY, GEMINI_LIVE_MODEL, ALLOWED_ORIGINS,
+//      LIVE_TOKEN_DAILY_CAP (200), LIVE_TOKEN_PER_MIN (6), PAGE_PASS_SECRET
 
 import { GoogleGenAI } from '@google/genai';
-import { buildLiveConfig, DEFAULT_MODEL, API_VERSION, LANG_NAME } from '../../shared/live-config.js';
-import { getPersona } from '../../shared/personas.js';
-import { buildDoctorSummary, noteContradicts } from '../../shared/doctor-summary.js';
+import { buildTellConfig, cleanProfile, DEFAULT_MODEL, API_VERSION, LANG_NAME } from '../../shared/live-config.js';
 import { checkOrigin, rateLimit, takeDaily, envInt, issuePass, checkPass } from './guard.js';
+import { handleDraft } from './draft.js';
 
 // Every app language (shared/live-config.js LANG_NAME); anything else falls back to English.
 const LANGS = Object.keys(LANG_NAME);
@@ -22,12 +22,12 @@ export function settings() {
   return {
     key: process.env.GEMINI_API_KEY || '',
     model: process.env.GEMINI_LIVE_MODEL || DEFAULT_MODEL,
-    asyncTools: process.env.LIVE_ASYNC_TOOLS !== 'false',
-    summaryModel: process.env.SUMMARY_MODEL || 'gemini-flash-lite-latest',
     tokenCap: envInt('LIVE_TOKEN_DAILY_CAP', 200),
     tokenPerMin: envInt('LIVE_TOKEN_PER_MIN', 6),
-    summaryCap: envInt('SUMMARY_DAILY_CAP', 300),
-    summaryPerMin: envInt('SUMMARY_PER_MIN', 10),
+    // POST /api/draft-questions (server/lib/draft.js): Ayu drafts a question set for an ASHA to review.
+    draftModel: process.env.DRAFT_MODEL || process.env.SUMMARY_MODEL || 'gemini-flash-lite-latest',
+    draftCap: envInt('DRAFT_DAILY_CAP', 100),
+    draftPerMin: envInt('DRAFT_PER_MIN', 4),
   };
 }
 
@@ -55,14 +55,14 @@ function corsHeaders(origin) {
 }
 
 /**
- * @param {'health'|'live-token'|'summary'} route
+ * @param {'health'|'live-token'} route
  * @param {{method: string, headers: object, body: any, ip: string}} req  headers lower-cased
- * @param {{mintToken?: Function, writeNote?: Function}} [deps]  injectable for tests
+ * @param {{mintToken?: Function}} [deps]  injectable for tests
  * @returns {Promise<{status: number, headers: object, body: any}>}
  */
 export async function handleApi(route, req, deps = {}) {
   const s = settings();
-  // POSTs (token, summary) need a browser Origin; the health check stays open.
+  // POSTs need a browser Origin; the health check stays open.
   const origin = checkOrigin(req.headers, { requireOrigin: req.method === 'POST' });
   const cors = corsHeaders(origin.cors);
   const out = (status, body) => json(status, body, { ...cors, 'Cache-Control': 'no-store' });
@@ -72,79 +72,37 @@ export async function handleApi(route, req, deps = {}) {
   if (route === 'health') {
     if (req.method !== 'GET') return out(405, { error: 'GET only' });
     const pass = s.key ? issuePass(s.key) : undefined;
-    return out(200, { ok: true, live: Boolean(s.key), model: s.model, apiVersion: API_VERSION, phone: 'stub', summary: Boolean(s.key), pass });
+    return out(200, { ok: true, live: Boolean(s.key), model: s.model, apiVersion: API_VERSION, pass });
   }
 
   if (req.method !== 'POST') return out(405, { error: 'POST only' });
   if (!origin.ok) return out(403, { error: 'Origin not allowed.' });
 
   if (route === 'live-token') {
-    if (!s.key) return out(503, { error: 'No GEMINI_API_KEY on the server — use mock mode.', mock: true });
-    if (!checkPass(s.key, req.headers['x-talk-pass'])) return out(403, { error: 'Please reload the page.', mock: true, pass: false });
-    if (!rateLimit('live-token', req.ip, { limit: s.tokenPerMin })) return out(429, { error: 'Too many requests, try again in a minute.', mock: true });
-    if (!takeDaily('live-token', s.tokenCap)) return out(429, { error: 'Today’s live talks are used up. Continuing in mock mode.', mock: true, cap: true });
+    // `reason` tells the app which plain line to show; the quick taps work either way.
+    if (!s.key) return out(503, { error: 'No GEMINI_API_KEY on the server.', reason: 'no-key' });
+    if (!checkPass(s.key, req.headers['x-talk-pass'])) return out(403, { error: 'Please reload the page.', reason: 'pass', pass: false });
+    if (!rateLimit('live-token', req.ip, { limit: s.tokenPerMin })) return out(429, { error: 'Too many requests, try again in a minute.', reason: 'busy' });
+    if (!takeDaily('live-token', s.tokenCap)) return out(429, { error: 'Today’s live talks are used up.', reason: 'cap', cap: true });
 
-    const body = req.body || {};
-    const persona = getPersona(String(body.persona || 'sunita'));
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const profile = cleanProfile(body.profile);
     const lang = LANGS.includes(body.lang) ? body.lang : 'en';
-    const config = buildLiveConfig({ persona, lang, asyncTools: s.asyncTools });
+    const config = buildTellConfig({ profile, lang });
     try {
       const token = await (deps.mintToken || mintToken)({ key: s.key, model: s.model, config });
       return out(200, { token, model: s.model, apiVersion: API_VERSION, config, expiresInSec: 900 });
     } catch (err) {
       console.error('[live-token]', err?.message || err);
-      return out(502, { error: 'Could not create a Live API token.', mock: true });
+      return out(502, { error: 'Could not create a Live API token.', reason: 'token' });
     }
   }
 
-  if (route === 'summary') {
-    const body = req.body || {};
-    const persona = getPersona(String(body.persona || 'sunita'));
-    // The deterministic summary is rebuilt here from the talk, so the model only rewrites known facts.
-    const det = buildDoctorSummary({ persona, talk: sanitizeTalk(body.talk) });
-    if (!s.key) return out(200, { note: null, source: 'deterministic', summary: det.text });
-    if (!rateLimit('summary', req.ip, { limit: s.summaryPerMin })) return out(429, { error: 'Too many requests.', summary: det.text });
-    if (!takeDaily('summary', s.summaryCap)) return out(200, { note: null, source: 'deterministic', summary: det.text, cap: true });
-    try {
-      const level = sanitizeTalk(body.talk)?.referral.level || 'none';
-      const note = await (deps.writeNote || writeNote)({ key: s.key, model: s.summaryModel, text: det.text });
-      // The rules decide the level; a note that softens it is dropped.
-      if (noteContradicts(level, note)) return out(200, { note: null, source: 'deterministic', summary: det.text, dropped: 'contradicts referral' });
-      return out(200, { note, source: 'model', model: s.summaryModel, summary: det.text });
-    } catch (err) {
-      console.error('[summary]', err?.message || err);
-      return out(200, { note: null, source: 'deterministic', summary: det.text });
-    }
+  if (route === 'draft-questions') {
+    return handleDraft(req, { key: s.key, model: s.draftModel, perMin: s.draftPerMin, cap: s.draftCap }, out, deps);
   }
 
   return out(404, { error: 'Not found' });
-}
-
-/** Keep only the fields the summary reads, with size limits (the talk comes from the browser). */
-export function sanitizeTalk(t) {
-  if (!t || typeof t !== 'object') return null;
-  const s = (v, n = 160) => (typeof v === 'string' ? v.slice(0, n) : undefined);
-  const arr = (v, n) => (Array.isArray(v) ? v.slice(0, n) : []);
-  const level = ['none', 'watch', 'see_today', 'emergency'].includes(t.referral?.level) ? t.referral.level : 'none';
-  return {
-    at: Number(t.at) || Date.now(),
-    signs: arr(t.signs, 20).map((x) => s(x, 40)).filter(Boolean),
-    symptoms: arr(t.symptoms, 10).map((x) => ({ sign: s(x?.sign, 40), her_words: s(x?.her_words) || '', since: s(x?.since, 40), severity: s(x?.severity, 20) })),
-    answers: arr(t.answers, 12).map((x) => ({
-      kind: s(x?.kind, 10),
-      question: s(x?.question) || '',
-      answer: Array.isArray(x?.answer) ? x.answer.slice(0, 8).map((y) => s(y, 80)) : s(x?.answer, 80),
-      picture: s(x?.picture, 20),
-      pictureSet: s(x?.pictureSet, 30),
-      via: s(x?.via, 10),
-      symptom: s(x?.symptom, 30),
-      changed: Boolean(x?.changed),
-    })),
-    photos: arr(t.photos, 6).map((x) => ({ purpose: s(x?.purpose, 20) || 'document', kind: s(x?.kind, 10) })),
-    plan: t.plan && typeof t.plan === 'object' ? Object.fromEntries(Object.entries(t.plan).slice(0, 6).map(([k, v]) => [s(k, 20), { value: s(v?.value, 120) || '', ready: Boolean(v?.ready) }])) : {},
-    referral: { level, rule: s(t.referral?.rule, 80), reasons: arr(t.referral?.reasons, 6).map((x) => s(x, 160)).filter(Boolean) },
-    questionsForDoctor: arr(t.questionsForDoctor, 5).map((x) => s(x)).filter(Boolean),
-  };
 }
 
 async function mintToken({ key, model, config }) {
@@ -152,7 +110,7 @@ async function mintToken({ key, model, config }) {
   const token = await client(key).authTokens.create({
     config: {
       uses: 1,
-      // The talk is 5 minutes; give the session some slack.
+      // A Tell Ayu session is at most 3 minutes; give it some slack.
       expireTime: new Date(now + 15 * 60 * 1000).toISOString(),
       // She must start the session within a minute.
       newSessionExpireTime: new Date(now + 60 * 1000).toISOString(),
@@ -162,22 +120,4 @@ async function mintToken({ key, model, config }) {
     },
   });
   return token.name;
-}
-
-const NOTE_PROMPT = `You write a handover note for a busy doctor in India.
-Rewrite the summary below as at most 3 short sentences (under 60 words), in English.
-Use only facts in the summary. Start with the danger signs she reported, then what she said in her own words, then anything from her record that matters (BP trend, Hb, missed tablets).
-Do NOT state or judge the referral level or urgency — the fixed rules already show it above your note.
-Do not diagnose, do not suggest or change medicines, do not add advice.
-
-Summary:
-`;
-
-async function writeNote({ key, model, text }) {
-  const res = await client(key).models.generateContent({
-    model,
-    contents: NOTE_PROMPT + text,
-    config: { maxOutputTokens: 160, temperature: 0.2 },
-  });
-  return (res.text || '').trim().slice(0, 600) || null;
 }

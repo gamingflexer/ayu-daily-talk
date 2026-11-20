@@ -19,6 +19,9 @@ dependencies:
     version: 19.3.1(react@19.3.1)
 
 devDependencies:
+  '@fontsource-variable/geist-mono':
+    specifier: ^5.3.0
+    version: 5.3.0
   '@types/react':
     specifier: ^19.3.0
     version: 19.3.0
@@ -1166,6 +1169,10 @@ packages:
       tslib: 2.9.1
     dev: true
     optional: true
+
+  /@fontsource-variable/geist-mono@5.3.0:
+    resolution: {integrity: sha512-vBbuwDEo9AkrqADMXOrlAR3DFcJi4/JxeuU43FoiQERnNwsfXNnvxvReZG02cQKmyk4DZkZdBZX3oTDvy2zBAw==}
+    dev: true
 
   /@google/genai@3.2.0:
     resolution: {integrity: sha512-AyT5kezsBpxRr8ljz7RmfhrxfjTse0aIDv7DGoNmk6lyta0A13AEOiGpw7VFcrYSmXq8HtkbWYBAeqqdALv6gw==}

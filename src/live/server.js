@@ -13,18 +13,22 @@ export async function pagePass() {
   return lastPass?.value || '';
 }
 
-/** Ask the server whether live (Gemini) mode is on. Any failure → mock mode. */
-export async function checkLive({ timeoutMs = 2500 } = {}) {
+/**
+ * Ask the server whether live listening (Gemini) is on.
+ * @returns {Promise<{live: boolean, model?: string, reason: ''|'no-key'|'server'|'offline'}>}
+ */
+export async function checkLive({ timeoutMs = 4000 } = {}) {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return { live: false, reason: 'offline' };
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(`${liveServerUrl()}/api/health`, { signal: ctrl.signal });
-    if (!res.ok) return { live: false, reason: `server ${res.status}` };
+    const res = await fetch(`${liveServerUrl()}/api/health`, { signal: ctrl.signal, cache: 'no-store' });
+    if (!res.ok) return { live: false, reason: 'server' };
     const body = await res.json();
     if (body.pass) lastPass = { value: body.pass, at: Date.now() };
-    return { live: Boolean(body.live), model: body.model, reason: body.live ? '' : 'no GEMINI_API_KEY on server' };
+    return { live: Boolean(body.live), model: body.model, reason: body.live ? '' : 'no-key' };
   } catch {
-    return { live: false, reason: 'no server (static build)' };
+    return { live: false, reason: typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline' : 'server' };
   } finally {
     clearTimeout(timer);
   }
