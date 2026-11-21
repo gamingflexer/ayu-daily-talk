@@ -65,6 +65,11 @@ function Routes() {
   if (path === '/home')
     return (
       <HomeScreen
+        onCard={() => {
+          // Ayu explains her MCP or vaccine card on a call, back camera on.
+          beginTell();
+          go('/tell?card=1');
+        }}
         onCheck={() => {
           // Today's check is a call: ask for the mic inside her tap, then open it.
           beginTell();
@@ -78,7 +83,7 @@ function Routes() {
       />
     );
   if (path === '/check') return <CheckScreen />;
-  if (path === '/tell') return <TellScreen key="tell" />;
+  if (path === '/tell') return <TellScreen key={query.card ? 'card' : 'tell'} />;
   // Today's check starts as a video call with Ayu; /check is the same check by tapping (no call).
   if (path === '/call') return <TellScreen key="call" mode="check" />;
   if (path === '/help') return <HelpScreen />;

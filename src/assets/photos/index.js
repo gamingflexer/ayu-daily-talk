@@ -20,4 +20,7 @@ export const PHOTOS = {
   body_fits: new URL('./body_fits.webp', import.meta.url).href,
   vomit: new URL('./vomit.webp', import.meta.url).href,
   mood_low: new URL('./mood_low.webp', import.meta.url).href,
+  skin_normal: new URL('./skin_normal.webp', import.meta.url).href,
+  skin_light: new URL('./skin_light.webp', import.meta.url).href,
+  skin_deep: new URL('./skin_deep.webp', import.meta.url).href,
 };

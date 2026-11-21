@@ -131,6 +131,35 @@ export function profileLines(profile) {
   return lines.join('\n');
 }
 
+// ---- Her cards and papers ---------------------------------------------------
+
+/**
+ * Shared by Tell Ayu and the daily check: how Ayu reads the MCP card, ANC card,
+ * vaccination card or a paper she holds up to the camera. Schedule: India's
+ * Universal Immunisation Programme and the MCP card's pregnancy items.
+ */
+export const CARDS_KNOWLEDGE = `Her cards and papers
+- She may show you her Mother and Child Protection (MCP) card, ANC card, the baby's vaccination card, an IFA or growth chart, or another paper. Read what is written, ticked or stamped, then explain in plain spoken words what has been done, what comes next, and when.
+- Never invent a date or a dose she cannot see on the card. If a box is empty or you cannot read it, say so.
+- If a vaccine or check-up looks due or missed, say kindly that she can take the card to the next vaccination day, or show it to her ASHA or ANM. No alarm, no diagnosis.
+- Do not call any number on the card good or bad (BP, Hb, weight): say her doctor or ASHA will explain it.
+- If it is hard to read, ask her to hold the card closer, flatter, or in better light.
+- Never read out a name or phone number written on the card.
+- Reference, India's Universal Immunisation Programme (the card she shows wins if it differs):
+  - Birth: BCG, OPV-0, Hepatitis B birth dose.
+  - 6 weeks: Pentavalent-1, OPV-1, Rotavirus-1, fIPV-1, PCV-1.
+  - 10 weeks: Pentavalent-2, OPV-2, Rotavirus-2.
+  - 14 weeks: Pentavalent-3, OPV-3, Rotavirus-3, fIPV-2, PCV-2.
+  - 9 to 12 months: MR-1, JE-1 where given, PCV booster, Vitamin A 1st dose.
+  - 16 to 24 months: MR-2, JE-2 where given, DPT booster-1, OPV booster, Vitamin A 2nd dose; then Vitamin A every 6 months till 5 years.
+  - 5 to 6 years: DPT booster-2. 10 years and 16 years: Td.
+  - Pregnancy: Td-1 early in pregnancy, Td-2 four weeks later; or one Td booster if she had two doses in a pregnancy in the last 3 years.
+- Pregnancy items on the MCP card: at least 4 antenatal check-ups; IFA one tablet a day from the 4th month, for 180 days; calcium twice a day from the 4th month; deworming once in the second trimester.`;
+
+/** Opening note when she came to show Ayu a card (Home → "Your cards"). */
+export const CARD_NUDGE =
+  '[She wants you to explain her card or paper. Greet her by name in one short sentence and ask her to hold it in front of the camera.]';
+
 // ---- Prompt and tools -------------------------------------------------------
 
 export function tellPrompt({ profile, lang = 'en' }) {
@@ -161,6 +190,8 @@ Camera
 - When it turns on, say in one or two short sentences what you see, for example "I can see your ankles look puffy", and ask what she wants you to look at if it is not clear. You may ask her to move closer, hold still or show the other side. Never a diagnosis.
 - Only look at what she shows. If you see a private body part, kindly ask her to point the camera away.
 - If what you see matches something she said, you may record it with her words; never record a sign from the picture alone.
+
+${CARDS_KNOWLEDGE}
 
 Never
 - Never say whether it is serious, never give or hint at a level, never say "go to a doctor" or "it is fine". If she asks, say the app checks it with fixed safety rules the moment the talk ends, and that Help now is always there if she feels it cannot wait.
@@ -254,6 +285,8 @@ How the call goes
 - If she mentions something else she has (not in the questions), call record_symptom with her words.
 - When every question is answered (record_answer tells you what is left), ask "anything else?", then say in one sentence that you will now check her answers, and call finish_talk.
 
+${CARDS_KNOWLEDGE}
+
 Never
 - Never say whether an answer is serious, never give or hint at a level, never say "go to a doctor" or "it is fine". The next screen tells her, from fixed rules.
 - Never diagnose, never list possible conditions, never give odds.
@@ -312,9 +345,15 @@ export function buildTellConfig({ profile, lang = 'en', check = null }) {
 
 // ---- App notes sent during the session -------------------------------------
 
-/** First message after connect (the model speaks first). */
-export function openingNudge(lang = 'en', check = false) {
+/**
+ * First message after connect (the model speaks first).
+ * @param {string} lang
+ * @param {boolean} check  the daily check on the call
+ * @param {string} [intro]  'card': she came to show Ayu a card or paper (ignored in a check)
+ */
+export function openingNudge(lang = 'en', check = false, intro = null) {
   if (check) return `[Her daily check call has started. Greet her by name in ${LANG_NAME[lang] || 'English'} in one short sentence, then show and ask question 1.]`;
+  if (intro === 'card') return CARD_NUDGE;
   return `[She opened Tell Ayu. Greet her by name in ${LANG_NAME[lang] || 'English'} in one short sentence and ask how she is feeling today. Then talk with her.]`;
 }
 

@@ -93,7 +93,8 @@ test('prompt: greets by name in her language, talks with her, never decides a le
   assert.match(p, /Never tell her to take, stop or change any medicine/);
   assert.match(p, /No disclaimers/);
   assert.match(p, /point the camera away/);
-  assert.doesNotMatch(p, /ask_yes_no|red_flag_check|update_plan|card/);
+  // "card" is allowed now (her MCP / vaccine card); check-mode question cards stay out.
+  assert.doesNotMatch(p, /ask_yes_no|red_flag_check|update_plan|show_question|record_answer|question as a card/);
   assert.match(openingNudge('hi'), /in Hindi/);
   assert.match(STOP_NUDGE, /record_symptom/);
   assert.match(STOP_NUDGE, /finish_talk/);

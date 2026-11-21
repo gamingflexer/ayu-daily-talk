@@ -81,6 +81,8 @@ export default {
     checkStart: 'আজকের খোঁজখবর শুরু করুন',
     checkAgain: 'আজকের খোঁজখবর আবার করুন',
     week: 'আপনার গত 7 দিন',
+    cardsLabel: 'আপনার কার্ড',
+    cardsValue: 'Ayu-কে আপনার MCP বা টিকার কার্ড দেখান',
     trend: { new: 'আজ থেকে শুরু', steady: 'একই রকম', watch: 'নজর রাখুন', care: 'আজ যত্ন দরকার' },
     asha: 'আপনার আশাদিদি',
     ashaAdd: 'ওঁর নম্বর যোগ করুন',

@@ -84,6 +84,8 @@ export default {
     checkStart: 'Start today’s check',
     checkAgain: 'Do today’s check again',
     week: 'Your last 7 days',
+    cardsLabel: 'Your cards',
+    cardsValue: 'Show Ayu your MCP or vaccine card',
     trend: { new: 'Starts today', steady: 'Steady', watch: 'Keep an eye', care: 'Needs care today' },
     asha: 'Your ASHA',
     ashaAdd: 'Add her number',

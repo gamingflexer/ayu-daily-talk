@@ -139,6 +139,7 @@ The rate limit and caps are kept in memory per function instance; the hard ceili
 ## Credits
 
 - **Design:** Vrindar Kelkar (the v0 boards). **Brand:** the heart + "Ayu" mark belongs to Ayu.
-- **Pictures:** the photos in the pregnancy check and Tell Ayu are AI-generated (Gemini image); the woman is not a real person. Sources, prompts and the real photos that were considered are in [`docs/PHOTOS.md`](docs/PHOTOS.md). They need a clinician's and the designer's review. Baby skin colour uses the app's own flat illustrations.
+- **Pictures:** most photos in the check and Tell Ayu are AI-generated (Gemini image; the woman is not a real person). Six are real photos from the designer's Figma photo library (swollen feet, pitting, eye rubbing, and three newborn skin photos for the new-mother check). They need a clinician's and the designer's review.
+- **Photo credits:** which photo is real or AI-made, where each came from, and the credits for the real ones (to be added by Om) are in [`docs/PHOTOS.md`](docs/PHOTOS.md).
 - **Fonts:** [Inter](https://rsms.me/inter/) and [Geist Mono](https://vercel.com/font) (SIL Open Font License).
 - **Licence:** the code is [MIT](LICENSE). The Ayu name and mark are not covered by it.

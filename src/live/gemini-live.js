@@ -58,7 +58,7 @@ const failure = (reason, message) => Object.assign(new Error(message || reason),
 /**
  * @param {{profile: object, lang?: string}} opts  profile: {name, stage, weeks?, daysAfterBirth?, village?}
  */
-export function createGeminiTalk({ profile, lang = 'en', check = null }) {
+export function createGeminiTalk({ profile, lang = 'en', check = null, intro = null }) {
   const listeners = new Set();
   const emit = (e) => listeners.forEach((fn) => fn(e));
   const state = createTellState({ stage: profile?.stage, check });
@@ -163,7 +163,7 @@ export function createGeminiTalk({ profile, lang = 'en', check = null }) {
       }
       if (closedByUs) return;
       // Ayu speaks first, in her language.
-      send({ text: openingNudge(lang, Boolean(check)) });
+      send({ text: openingNudge(lang, Boolean(check), intro) });
       if (cam) send({ text: CAMERA_ON_NUDGE });
     } catch (err) {
       if (closedByUs) return;

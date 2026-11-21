@@ -20,12 +20,49 @@ const EMPTY = {
   sets: {}, // id → question set made on this phone
 };
 
+/**
+ * Demo profile (Om, 21 Nov 2026: "fill out all the information directly when we load the page").
+ * A phone that opens Ayu with nothing saved starts as Kavita, week 34, with her ASHA set up too,
+ * so a demo goes straight to Home. Everything can be changed under the profile (heart) button,
+ * and "Delete everything" there starts the demo fresh. The names and numbers are made up.
+ */
+function demo() {
+  const now = Date.now();
+  const id = 'w_demo';
+  return {
+    ...EMPTY,
+    lang: 'en',
+    role: 'woman',
+    activeId: id,
+    selfId: id,
+    asha: { name: 'Rekha Madavi', phone: '9800000001' },
+    women: {
+      [id]: {
+        id,
+        demo: true,
+        name: 'Kavita',
+        phone: '9800000002',
+        age: 24,
+        stage: 'pregnant',
+        weeksAtStart: 34,
+        weeksSetAt: now,
+        createdAt: now,
+        village: 'Jambhulni',
+        lang: 'en',
+        ashaName: 'Rekha tai',
+        ashaPhone: '9800000001',
+        centre: 'PHC Jambhulni',
+      },
+    },
+  };
+}
+
 function load() {
   try {
     const v = JSON.parse(localStorage.getItem(KEY) || 'null');
-    return v && typeof v === 'object' ? { ...EMPTY, ...v } : EMPTY;
+    return v && typeof v === 'object' ? { ...EMPTY, ...v } : demo();
   } catch {
-    return EMPTY;
+    return demo();
   }
 }
 function save(v) {
@@ -105,7 +142,7 @@ export function StoreProvider({ children }) {
 
       /** Wipe this phone. */
       erase() {
-        set({ ...EMPTY, lang: null });
+        set(demo());
       },
     }),
     [set],

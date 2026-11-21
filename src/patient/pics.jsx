@@ -1,6 +1,6 @@
 // Pictures for answers that are easier to recognise than to name.
-// Flat illustrations (the app's own, no real person) inside Vrindar's arch slot.
-// Licensed photos can replace these later: one entry per `pic` key.
+// Photos first (some real, from the designer's Figma photo library; the rest AI-made: see
+// docs/PHOTOS.md); the flat illustrations below are the fallback when a photo file is missing.
 
 const SKIN = '#9c6b4e';
 const SHADE = '#7a4f39';
@@ -84,6 +84,9 @@ const PHOTO_FOR = {
   'body:tired': 'body_tired',
   'body:fever': 'body_fever',
   'body:fits': 'body_fits',
+  'skin:normal': 'skin_normal',
+  'skin:light': 'skin_light',
+  'skin:deep': 'skin_deep',
 };
 const SIGN_PHOTO = {
   severe_headache: 'head_stays',
@@ -98,6 +101,7 @@ const SIGN_PHOTO = {
   convulsions: 'body_fits',
   vomiting_no_food: 'vomit',
   very_low_mood: 'mood_low',
+  baby_yellow_skin: 'skin_deep',
 };
 
 const img = (url) => <img src={url} alt="" loading="lazy" decoding="async" />;

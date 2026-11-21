@@ -25,7 +25,7 @@ export function HelpBar() {
 }
 
 /** 1 · Home — today's state as light, one coral action, three quiet rows. */
-export function HomeScreen({ onTell, onCheck }) {
+export function HomeScreen({ onTell, onCheck, onCard }) {
   const { t, lang } = useT();
   const { woman, ctx, qset, entries, role } = useStore();
   const [langOpen, setLangOpen] = useState(false);
@@ -88,6 +88,16 @@ export function HomeScreen({ onTell, onCheck }) {
                 {days.map((d, i) => (
                   <span key={d.key} className={`dot ${d.level === null ? (i === days.length - 1 ? 'todo' : 'none') : ''}`} data-level={d.level === null ? undefined : LEVEL_N[d.level]} />
                 ))}
+              </span>
+            }
+          />
+          <Row
+            label={t('home.cardsLabel')}
+            value={t('home.cardsValue')}
+            onClick={onCard}
+            action={
+              <span className="circle line" style={{ width: 52, height: 52 }} aria-hidden="true">
+                <Icon name="camera" />
               </span>
             }
           />

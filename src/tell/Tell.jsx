@@ -12,7 +12,7 @@ import { Screen, Circle, Btn, Mono, LEVEL_N } from '../ui/kit.jsx';
 import { Icon } from '../ui/icons.jsx';
 import { useT } from '../i18n/index.jsx';
 import { useStore } from '../store.jsx';
-import { go, swap } from '../router.js';
+import { go, swap, useRoute } from '../router.js';
 import { HelpBar } from '../patient/Home.jsx';
 import { assess } from '../../shared/triage.js';
 import { ruleContext } from '../../shared/journal.js';
@@ -52,6 +52,10 @@ export function TellScreen({ mode = 'tell' }) {
   const { t, lang } = useT();
   const { woman, addEntry, role, qset } = useStore();
   const checkMode = mode === 'check';
+  // From Home's "Your cards": open the back camera once the call is up, and Ayu asks to see the card.
+  const { query } = useRoute();
+  const cardMode = !checkMode && query.card === '1';
+  const cardCamRef = useRef(false);
   const [q, setQ] = useState(null); // question on screen (check mode)
   const [answers, setAnswers] = useState({}); // check mode
   const runRef = useRef(null); // the last finished call (turns, timings) for the research record
@@ -111,6 +115,11 @@ export function TellScreen({ mode = 'tell' }) {
     setPhase((p) => nextPhase(p, e));
     switch (e.type) {
       case 'status':
+        // Card mode: the back camera comes on once, right after the call connects.
+        if (e.status === 'live' && cardMode && !cardCamRef.current) {
+          cardCamRef.current = true;
+          if (!camRef.current) toggleCam();
+        }
         if (e.status === 'failed') {
           setFail(e.reason || 'other');
           stopStream(micRef.current);
@@ -197,7 +206,7 @@ export function TellScreen({ mode = 'tell' }) {
     }
     if (stale()) return;
 
-    const engine = mod.createGeminiTalk({ profile: profileOf(woman), lang, check: checkMode ? checkPayload() : null });
+    const engine = mod.createGeminiTalk({ profile: profileOf(woman), lang, check: checkMode ? checkPayload() : null, intro: cardMode ? 'card' : null });
     engineRef.current = engine;
     engine.on((e) => {
       if (engineRef.current === engine) onEvent(e);

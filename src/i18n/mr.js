@@ -81,6 +81,8 @@ export default {
     checkStart: 'आजची तपासणी सुरू करा',
     checkAgain: 'आजची तपासणी परत करा',
     week: 'तुमचे मागचे 7 दिवस',
+    cardsLabel: 'तुमची कार्डं',
+    cardsValue: 'Ayu ला तुमचं MCP किंवा लसीचं कार्ड दाखवा',
     trend: { new: 'आजपासून सुरू', steady: 'ठीक चाललंय', watch: 'लक्ष ठेवा', care: 'आज काळजी हवी' },
     asha: 'तुमच्या आशा ताई',
     ashaAdd: 'त्यांचा नंबर जोडा',

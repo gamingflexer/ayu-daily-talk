@@ -22,7 +22,7 @@ const isoDay = (ms) => {
  */
 export function MeScreen() {
   const { t, lang } = useT();
-  const { role, woman, ctx, asha, self, updateWoman, setAsha, setRole, setActive, openSelf, erase } = useStore();
+  const { role, woman, ctx, asha, self, updateWoman, setAsha, setRole, openSelf, erase } = useStore();
   const isAsha = role === 'asha';
   const [name, setName] = useState((isAsha ? asha?.name : woman?.name) || '');
   const [phone, setPhone] = useState((isAsha ? asha?.phone : woman?.phone) || '');
@@ -121,8 +121,7 @@ export function MeScreen() {
             style={{ color: 'var(--red)' }}
             onClick={() => {
               erase();
-              setActive(null);
-              swap('/');
+              swap('/home');
             }}
           >
             {t('me.eraseYes')}

@@ -1,21 +1,44 @@
 # Card photos
 
-21 small photos (480x600 WebP, q72, 347 KB in total) for the answer cards, in `src/assets/photos/`, exported by `src/assets/photos/index.js` as `PHOTOS`.
+24 small photos (480x600 WebP, q72, about 373 KB in total) for the answer cards, in `src/assets/photos/`, exported by `src/assets/photos/index.js` as `PHOTOS` and mapped to answers in `src/patient/pics.jsx`.
 
-**All 21 are AI-generated (Google Gemini 3 Pro Image, "Nano Banana Pro"). None is a real photo and none shows a real person.** AI-generated tiles need a clinician's and the designer's review before real use.
+**6 are real photos and 18 are AI-generated.** The real ones (`feet_dent`, `feet_puffy`, `vision_blur`, `skin_normal`, `skin_light`, `skin_deep`) come **from the designer's Figma photo library (file ZzHDfsxwIWGvTfXwmc27MH, frame 47:2389, "Photo library (internal mocks)"); sources to be credited by Om.** The other 18 are AI-generated (Google Gemini 3 Pro Image, "Nano Banana Pro"), show no real person, and need a clinician's and the designer's review before real use.
 
-## Sources
+## Real photos (designer's Figma photo library)
+
+Cropped with PIL to 4:5 on the subject and resized to 480x600, WebP q72, colours untouched.
+
+| Key | Used for | Figma layer | What it shows |
+|---|---|---|---|
+| `feet_dent` | `swell:dent` | oedema_pitting-foot | left panel of a two-panel clinical photo: a finger pressing into a swollen shin (pitting test) |
+| `feet_puffy` | `swell:feet`, sign `swelling_feet` | oedema_swollen-foot | a swollen foot next to a sandal on a tiled floor |
+| `vision_blur` | `head:vision`, sign `blurred_vision` | sym_blurry-vision | a pregnant woman in a red shawl at a clinic, rubbing her eye |
+| `skin_normal` | `skin:normal` (new-mother check) | newborn_skin-normal | a newborn's belly and arm, normal skin |
+| `skin_light` | `skin:light` | jaundice_newborn-body | a newborn's arm and back, slightly yellow |
+| `skin_deep` | `skin:deep`, sign `baby_yellow_skin` | jaundice_newborn-chest | a newborn's belly, clearly yellow |
+
+Light and deep were assigned by how yellow each photo looks, not by the layer names (the "chest" photo is the yellower one). The baby-skin illustrations in `pics.jsx` (`baby_normal`, `baby_light`, `baby_deep`) stay as the fallback.
+
+Review notes for the real photos:
+- `skin_normal` shows a much paler-skinned baby than the two jaundice photos; a mother may compare tone rather than yellowness. Replace with a normal-skin photo of an Indian newborn when one is available.
+- `vision_blur` is a real, identifiable woman; the gesture (rubbing her eye) suggests eye trouble but cannot show blurred sight. Consent and source need confirming.
+- `feet_dent` is clinical (hospital sheet); the dent is shown by the pressing finger rather than a visible pit.
+- Not used: call_face, ambulance, bp_150, urine_protein (Global Health Media watermark), iron-strip_red, stool_*, patch_*; sym_headache (the woman is smiling, it does not show a headache that stays, so `head_stays` stays AI).
+
+## AI-generated tiles
+
+### Sources
 
 | Key | Source | Sheet / tile |
 |---|---|---|
 | `feet_normal` | AI-generated (Gemini image), not a real person | sheet1 tile 1 |
-| `feet_puffy` | AI-generated (Gemini image), not a real person | sheet2 tile 3 |
-| `feet_dent` | AI-generated (Gemini image), not a real person | sheet3 tile 1 |
+| `feet_puffy` | replaced by a real photo (see above); AI tile no longer in the repo | sheet2 tile 3 |
+| `feet_dent` | replaced by a real photo (see above); AI tile no longer in the repo | sheet3 tile 1 |
 | `hands_puffy` | AI-generated (Gemini image), not a real person | sheet2 tile 6 |
 | `head_none` | AI-generated (Gemini image), not a real person | sheet1 tile 5 |
 | `head_mild` | AI-generated (Gemini image), not a real person | sheet1 tile 6 |
 | `head_stays` | AI-generated (Gemini image), not a real person | sheet1 tile 7 |
-| `vision_blur` | AI-generated (Gemini image), not a real person | sheet1 tile 8 |
+| `vision_blur` | replaced by a real photo (see above); AI tile no longer in the repo | sheet1 tile 8 |
 | `baby_usual` | AI-generated (Gemini image), not a real person | sheet1 tile 9 |
 | `baby_less` | AI-generated (Gemini image), not a real person | sheet1 tile 10 |
 | `baby_still` | AI-generated (Gemini image), not a real person | sheet1 tile 11 |

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cleanCheck, buildTellConfig, tappedNudge, openingNudge } from '../shared/live-config.js';
+import { cleanCheck, buildTellConfig, tappedNudge, openingNudge, tellPrompt, checkPrompt, CARD_NUDGE } from '../shared/live-config.js';
 import { createTellState, handleTellTool, tapAnswer, checkLeft } from '../shared/talk-state.js';
 import { runToolCalls } from '../src/live/tool-flow.js';
 
@@ -63,4 +63,24 @@ test('show_question and record_answer: only known ids; taps and voice land in th
   assert.match(handleTellTool(createTellState({ stage: 'pregnant' }), 'record_answer', { question_id: 'swell', option_id: 'feet' }).response.error, /no daily check/);
   assert.match(tappedNudge('Q', 'A', []), /All questions are answered/);
   assert.match(tappedNudge('Q', 'A', ['baby']), /Still to ask: baby/);
+});
+
+test('cards: both prompts carry the immunisation schedule and the card rules', () => {
+  const profile = { name: 'Asha', stage: 'postnatal' };
+  for (const prompt of [tellPrompt({ profile }), checkPrompt({ profile, check: cleanCheck(raw) })]) {
+    assert.match(prompt, /Universal Immunisation Programme/);
+    assert.match(prompt, /Birth: BCG, OPV-0, Hepatitis B birth dose/);
+    assert.match(prompt, /14 weeks: Pentavalent-3, OPV-3, Rotavirus-3, fIPV-2, PCV-2/);
+    assert.match(prompt, /Td-1 early in pregnancy, Td-2 four weeks later/);
+    assert.match(prompt, /Never invent a date or a dose/);
+    assert.match(prompt, /Never read out a name or phone number written on the card/);
+    // The card block sits before the "Never" section.
+    assert.ok(prompt.indexOf('Her cards and papers') < prompt.indexOf('\nNever\n'));
+  }
+});
+
+test('cards: the opening note asks for the card only in Tell Ayu, never in the daily check', () => {
+  assert.equal(openingNudge('hi', false, 'card'), CARD_NUDGE);
+  assert.match(openingNudge('hi', true, 'card'), /daily check/);
+  assert.match(openingNudge('hi', false), /how she is feeling/);
 });

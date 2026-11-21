@@ -81,6 +81,8 @@ export default {
     checkStart: 'આજની તપાસ શરૂ કરો',
     checkAgain: 'આજની તપાસ ફરી કરો',
     week: 'તમારા છેલ્લા 7 દિવસ',
+    cardsLabel: 'તમારાં કાર્ડ',
+    cardsValue: 'Ayu ને તમારું MCP કે રસીનું કાર્ડ બતાવો',
     trend: { new: 'આજથી શરૂ', steady: 'એક સરખું', watch: 'ધ્યાન રાખો', care: 'આજે સંભાળ જોઈએ' },
     asha: 'તમારાં આશાબેન',
     ashaAdd: 'એમનો નંબર ઉમેરો',
