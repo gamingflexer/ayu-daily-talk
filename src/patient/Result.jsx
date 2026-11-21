@@ -3,7 +3,7 @@ import { Screen, Circle, Mono, Btn, Rows, Row, ReasonChip, LEVEL_N } from '../ui
 import { Icon } from '../ui/icons.jsx';
 import { useT } from '../i18n/index.jsx';
 import { useStore } from '../store.jsx';
-import { go } from '../router.js';
+import { go, swap } from '../router.js';
 import { findSet, reasonText, timeLabel, stageLine, telHref, smsHref, mapsHref } from '../ui/words.js';
 import { ruleContext } from '../../shared/journal.js';
 import { speak, hush } from '../ui/speak.js';
@@ -33,7 +33,7 @@ export function ResultScreen({ id }) {
   const woman = entry ? women[entry.womanId] : null;
   const home = () => {
     hush();
-    go(role === 'asha' && woman ? `/asha/w/${woman.id}` : '/home');
+    swap(role === 'asha' && woman ? `/asha/w/${woman.id}` : '/home');
   };
 
   const w = entry && woman ? resultWords(entry, woman, sets, t, lang) : null;

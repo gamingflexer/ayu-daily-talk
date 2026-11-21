@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useT } from '../i18n/index.jsx';
 import { useStore } from '../store.jsx';
-import { back, go, href } from '../router.js';
+import { go, swap, href } from '../router.js';
 import { Screen, Circle, Mono, Btn, Field, Sheet, LEVEL_N } from '../ui/kit.jsx';
 import { Icon } from '../ui/icons.jsx';
 import { telHref, timeLabel, weekdayLabel, questionText, optionText } from '../ui/words.js';
@@ -29,7 +29,7 @@ export function AshaWoman({ id }) {
     return (
       <Screen>
         <div className="top">
-          <Circle icon="back" label={t('asha.backToday')} onClick={() => back('/asha')} />
+          <Circle icon="back" label={t('asha.backToday')} onClick={() => swap('/asha')} />
         </div>
         <div className="hero">
           <p className="body-lg">{t('asha.woman.missing')}</p>
@@ -51,7 +51,7 @@ export function AshaWoman({ id }) {
   return (
     <Screen aura={{ tone: lv === null ? 'none' : LEVEL_N[lv], pos: 'topRight' }} className="a-woman">
       <div className="top">
-        <Circle icon="back" label={t('asha.backToday')} onClick={() => back('/asha')} />
+        <Circle icon="back" label={t('asha.backToday')} onClick={() => swap('/asha')} />
         <Mono className="strong">{s.check ? t('asha.woman.checkedIn', { time: timeLabel(s.check.at, lang) }) : t('asha.woman.noCheck')}</Mono>
       </div>
 

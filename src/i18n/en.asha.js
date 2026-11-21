@@ -184,6 +184,11 @@ export default {
   },
 
   review: {
+    addAnswer: 'Add an answer',
+    removeAnswer: 'Remove answer {n}',
+    addQuestion: 'Add a question',
+    dictate: 'Speak instead of typing',
+    listening: 'Listening… tap to stop',
     meta: '{title} · {n} of {total}',
     hear: 'Hear it in {lang}',
     ask: 'Ayu wrote this question. Is it right?',
@@ -204,6 +209,9 @@ export default {
   },
 
   send: {
+    approveOnly: 'Approve, send later',
+    levels108One: '1 answer set to 108',
+    levelsDoctorOne: '1 answer set to Doctor',
     meta: '{n} of {n} checked',
     title: 'Who should get these questions?',
     lead: '{title}. They start with her next check, read aloud in her language.',

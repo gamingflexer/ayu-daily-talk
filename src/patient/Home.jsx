@@ -4,7 +4,7 @@ import { Icon } from '../ui/icons.jsx';
 import { LangPill, LangSheet } from '../ui/lang.jsx';
 import { useT } from '../i18n/index.jsx';
 import { useStore } from '../store.jsx';
-import { go, href } from '../router.js';
+import { go, swap, href } from '../router.js';
 import { today, lastDays, trend } from '../../shared/journal.js';
 import { dayLabel, stageLine, telHref } from '../ui/words.js';
 
@@ -41,7 +41,7 @@ export function HomeScreen({ onTell, onCheck, onCard }) {
     <Screen aura={{ tone: level === null ? 'home' : LEVEL_N[level], pos: 'top' }}>
       <div className="top">
         {role === 'asha' ? (
-          <Circle icon="back" size={44} label={t('me.backToAsha')} href={href(`/asha/w/${woman.id}`)} />
+          <Circle icon="back" size={44} label={t('me.backToAsha')} onClick={() => swap(`/asha/w/${woman.id}`)} />
         ) : (
           <Circle icon="heart" size={44} iconSize={22} iconColor="var(--coral)" label={t('common.profile')} href={href('/me')} />
         )}

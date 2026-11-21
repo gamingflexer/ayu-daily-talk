@@ -9,6 +9,7 @@ import { speak } from '../ui/speak.js';
 import { optionLevel } from '../../shared/triage.js';
 import { levelIndex } from '../../shared/red-flags.js';
 import { LevelPicker } from './parts.jsx';
+import { DictateField } from '../ui/dictate.jsx';
 
 const pick = (text, lang) => text?.[lang] || text?.en || '';
 
@@ -23,6 +24,7 @@ export function AshaReview({ setId, n }) {
   const idx = Math.max(0, Number(n) - 1 || 0);
   const q = set?.questions[idx];
   const [editing, setEditing] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [confirm, setConfirm] = useState(false);
 
   useEffect(() => {
@@ -113,6 +115,10 @@ export function AshaReview({ setId, n }) {
             </div>
           );
         })}
+        <button type="button" className="add-link" onClick={() => setAdding(true)}>
+          <Icon name="plus" size={20} />
+          {t('asha.review.addQuestion')}
+        </button>
         <button type="button" className="a-side-link" onClick={() => setConfirm(true)}>
           <Icon name="trash" size={18} />
           {t('asha.review.remove')}
@@ -128,6 +134,19 @@ export function AshaReview({ setId, n }) {
       </div>
 
       {editing && <WordsSheet q={q} onClose={() => setEditing(false)} onSave={(next) => (putQuestion(next), setEditing(false))} />}
+      {adding && (
+        <WordsSheet
+          q={blankQuestion(set)}
+          isNew
+          onClose={() => setAdding(false)}
+          onSave={(next) => {
+            const questions = [...set.questions, next];
+            saveSet({ ...set, questions });
+            setAdding(false);
+            go(`/asha/review/${encodeURIComponent(set.id)}/${questions.length}`);
+          }}
+        />
+      )}
       {confirm && (
         <Sheet title={t('asha.review.removeTitle')} onClose={() => setConfirm(false)} closeLabel={t('asha.close')}>
           <p className="body a-sheet-body">{t('asha.review.removeBody')}</p>
@@ -141,22 +160,38 @@ export function AshaReview({ setId, n }) {
   );
 }
 
-/** Edit the question and its answers in every language the draft has. */
-function WordsSheet({ q, onClose, onSave }) {
+/** A new, empty question in the set's languages (two answers to start, both "Fine"; the ASHA sets the levels). */
+function blankQuestion(set) {
+  const langs = Object.keys(set.questions[0]?.text || { en: '' });
+  const empty = Object.fromEntries(langs.map((l) => [l, '']));
+  let n = set.questions.length + 1;
+  while (set.questions.some((x) => x.id === `q${n}`)) n++;
+  return { id: `q${n}`, text: { ...empty }, options: [1, 2].map((i) => ({ id: `o${i}`, text: { ...empty }, floor: 'none' })), checked: false };
+}
+
+/** Edit (or write) a question and its answers in every language the draft has. Answers can be added (up to 5) and removed (down to 2). */
+function WordsSheet({ q, onClose, onSave, isNew = false }) {
   const { t } = useT();
   const langs = Object.keys(q.text);
   const [text, setText] = useState(q.text);
-  const [opts, setOpts] = useState(q.options.map((o) => o.text));
+  const [opts, setOpts] = useState(q.options.map((o) => ({ ...o, text: { ...Object.fromEntries(langs.map((l) => [l, ''])), ...o.text } })));
   const clean = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, v.replace(/\s+/g, ' ').trim()]).filter(([, v]) => v));
-  const ok = text.en?.trim() && opts.every((o) => o.en?.trim());
+  const ok = text.en?.trim() && opts.length >= 2 && opts.every((o) => o.text.en?.trim());
+  const mic = { micLabel: t('asha.review.dictate'), listeningLabel: t('asha.review.listening') };
+
+  function addAnswer() {
+    let n = opts.length + 1;
+    while (opts.some((o) => o.id === `o${n}`)) n++;
+    setOpts((p) => [...p, { id: `o${n}`, text: Object.fromEntries(langs.map((l) => [l, ''])), floor: 'none' }]);
+  }
 
   function save() {
     if (!ok) return;
-    onSave({ ...q, text: clean(text), options: q.options.map((o, i) => ({ ...o, text: clean(opts[i]) })) });
+    onSave({ ...q, text: clean(text), options: opts.map((o) => ({ ...o, text: clean(o.text) })), checked: false });
   }
 
   return (
-    <Sheet title={t('asha.review.editTitle')} onClose={onClose} closeLabel={t('asha.close')}>
+    <Sheet title={isNew ? t('asha.review.addQuestion') : t('asha.review.editTitle')} onClose={onClose} closeLabel={t('asha.close')}>
       <form
         className="a-words"
         noValidate
@@ -166,19 +201,34 @@ function WordsSheet({ q, onClose, onSave }) {
         }}
       >
         {langs.map((l) => (
-          <Field key={`q-${l}`} lang={l} label={t('asha.review.questionIn', { lang: LANG_LABELS[l] })} value={text[l] || ''} maxLength={140} onChange={(e) => setText((p) => ({ ...p, [l]: e.target.value }))} />
+          <DictateField key={`q-${l}`} lang={l} label={t('asha.review.questionIn', { lang: LANG_LABELS[l] })} value={text[l] || ''} maxLength={140} onChange={(v) => setText((p) => ({ ...p, [l]: v }))} {...mic} />
         ))}
-        {q.options.map((o, i) =>
-          Object.keys(o.text).map((l) => (
-            <Field
-              key={`${o.id}-${l}`}
-              lang={l}
-              label={t('asha.review.optionIn', { n: i + 1, lang: LANG_LABELS[l] })}
-              value={opts[i][l] || ''}
-              maxLength={60}
-              onChange={(e) => setOpts((p) => p.map((x, j) => (j === i ? { ...x, [l]: e.target.value } : x)))}
-            />
-          )),
+        {opts.map((o, i) => (
+          <div key={o.id} className="a-words-opt">
+            {langs.map((l) => (
+              <DictateField
+                key={`${o.id}-${l}`}
+                lang={l}
+                label={t('asha.review.optionIn', { n: i + 1, lang: LANG_LABELS[l] })}
+                value={o.text[l] || ''}
+                maxLength={60}
+                onChange={(v) => setOpts((p) => p.map((x, j) => (j === i ? { ...x, text: { ...x.text, [l]: v } } : x)))}
+                {...mic}
+              />
+            ))}
+            {opts.length > 2 && (
+              <button type="button" className="a-side-link" onClick={() => setOpts((p) => p.filter((_, j) => j !== i))}>
+                <Icon name="trash" size={18} />
+                {t('asha.review.removeAnswer', { n: i + 1 })}
+              </button>
+            )}
+          </div>
+        ))}
+        {opts.length < 5 && (
+          <button type="button" className="add-link" onClick={addAnswer}>
+            <Icon name="plus" size={20} />
+            {t('asha.review.addAnswer')}
+          </button>
         )}
         <Btn type="submit" disabled={!ok}>
           {t('asha.review.save')}

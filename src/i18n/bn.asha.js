@@ -180,6 +180,11 @@ export default {
   },
 
   review: {
+    addAnswer: 'উত্তর যোগ করুন',
+    removeAnswer: 'উত্তর {n} সরান',
+    addQuestion: 'প্রশ্ন যোগ করুন',
+    dictate: 'লেখার বদলে বলুন',
+    listening: 'শুনছে… থামাতে চাপুন',
     meta: '{title} · {total}টার মধ্যে {n}',
     hear: '{lang}-এ শুনুন',
     ask: 'এই প্রশ্নটা Ayu লিখেছে। ঠিক আছে?',
@@ -200,6 +205,9 @@ export default {
   },
 
   send: {
+    approveOnly: 'অনুমোদন করুন, পরে পাঠান',
+    levels108One: '1টি উত্তর 108-এ',
+    levelsDoctorOne: '1টি উত্তর ডাক্তারে',
     meta: '{n}টার মধ্যে {n}টা দেখা হয়েছে',
     title: 'এই প্রশ্ন কারা পাবেন?',
     lead: '{title}। ওঁর পরের খোঁজখবর থেকে শুরু হবে, ওঁর ভাষায় পড়ে শোনানো হবে।',

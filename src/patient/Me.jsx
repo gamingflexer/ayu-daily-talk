@@ -7,7 +7,7 @@ import { LANG_LABELS } from '../i18n/dicts.js';
 import { useStore } from '../store.jsx';
 import { go, swap } from '../router.js';
 import { validPhone, stageLine } from '../ui/words.js';
-import { weeksNow } from '../../shared/journal.js';
+import { weeksNow, ruleContext } from '../../shared/journal.js';
 import { StageFields, stageData } from './Start.jsx';
 
 const digits = (v) => v.replace(/\D/g, '').slice(0, 10);
@@ -22,7 +22,7 @@ const isoDay = (ms) => {
  */
 export function MeScreen() {
   const { t, lang } = useT();
-  const { role, woman, ctx, asha, self, updateWoman, setAsha, setRole, openSelf, erase } = useStore();
+  const { role, woman, ctx, asha, womenList, updateWoman, setAsha, setRole, setActive, erase } = useStore();
   const isAsha = role === 'asha';
   const [name, setName] = useState((isAsha ? asha?.name : woman?.name) || '');
   const [phone, setPhone] = useState((isAsha ? asha?.phone : woman?.phone) || '');
@@ -75,17 +75,24 @@ export function MeScreen() {
           <Rows>
             <Row label={t('me.language')} value={<span lang={lang}>{LANG_LABELS[lang]}</span>} onClick={() => setSheet('lang')} action={<Icon name="chevron" />} />
             {isAsha ? (
-              <Row
-                label={self ? stageLine(self, null, t) : t('welcome.womanSub')}
-                value={self ? t('me.switchWoman', { name: self.name }) : t('welcome.woman')}
-                onClick={() => {
-                  if (self) {
-                    openSelf();
-                    swap('/home');
-                  } else go('/start/woman');
-                }}
-                action={<Icon name="chevron" />}
-              />
+              // Patient view: open any woman's own app on this phone (Om, 21 Nov: no way out of the ASHA view).
+              (womenList.length ? womenList : [null]).map((w) =>
+                w ? (
+                  <Row
+                    key={w.id}
+                    label={stageLine(w, ruleContext(w), t)}
+                    value={t('me.switchWoman', { name: w.name })}
+                    onClick={() => {
+                      setActive(w.id);
+                      setRole('woman');
+                      swap('/home');
+                    }}
+                    action={<Icon name="chevron" />}
+                  />
+                ) : (
+                  <Row key="new" label={t('welcome.womanSub')} value={t('welcome.woman')} onClick={() => go('/start/woman')} action={<Icon name="chevron" />} />
+                ),
+              )
             ) : (
               <Row
                 label={t('welcome.asha')}

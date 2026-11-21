@@ -180,6 +180,11 @@ export default {
   },
 
   review: {
+    addAnswer: 'जवाब जोड़ें',
+    removeAnswer: 'जवाब {n} हटाएँ',
+    addQuestion: 'सवाल जोड़ें',
+    dictate: 'लिखने की जगह बोलें',
+    listening: 'सुन रही है… रोकने के लिए दबाएँ',
     meta: '{title} · {total} में से {n}',
     hear: '{lang} में सुनें',
     ask: 'यह सवाल Ayu ने लिखा है। क्या यह ठीक है?',
@@ -200,6 +205,9 @@ export default {
   },
 
   send: {
+    approveOnly: 'मंज़ूर करें, बाद में भेजें',
+    levels108One: '1 जवाब 108 पर',
+    levelsDoctorOne: '1 जवाब डॉक्टर पर',
     meta: '{n} में से {n} जाँचे',
     title: 'ये सवाल किसे भेजें?',
     lead: '{title}। उसकी अगली जाँच से शुरू होंगे, उसकी भाषा में पढ़कर सुनाए जाएँगे।',

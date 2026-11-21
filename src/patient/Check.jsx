@@ -58,7 +58,7 @@ export function CheckScreen() {
   };
   const goBack = () => {
     clearTimeout(timer.current);
-    if (i === 0) go(role === 'asha' ? `/asha/w/${woman.id}` : '/home');
+    if (i === 0) swap(role === 'asha' ? `/asha/w/${woman.id}` : '/home');
     else setI(i - 1);
   };
 

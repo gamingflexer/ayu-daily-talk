@@ -180,6 +180,11 @@ export default {
   },
 
   review: {
+    addAnswer: 'उत्तर जोडा',
+    removeAnswer: 'उत्तर {n} काढा',
+    addQuestion: 'प्रश्न जोडा',
+    dictate: 'लिहिण्याऐवजी बोला',
+    listening: 'ऐकतेय… थांबवायला दाबा',
     meta: '{title} · {total} पैकी {n}',
     hear: '{lang} मध्ये ऐका',
     ask: 'हा प्रश्न Ayu ने लिहिलाय. बरोबर आहे का?',
@@ -200,6 +205,9 @@ export default {
   },
 
   send: {
+    approveOnly: 'मंजूर करा, नंतर पाठवा',
+    levels108One: '1 उत्तर 108 वर',
+    levelsDoctorOne: '1 उत्तर डॉक्टरवर',
     meta: '{n} पैकी {n} तपासले',
     title: 'हे प्रश्न कोणाला पाठवायचे?',
     lead: '{title}. तिच्या पुढच्या तपासणीपासून सुरू होतील, तिच्या भाषेत वाचून दाखवले जातील.',

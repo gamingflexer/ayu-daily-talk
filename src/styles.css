@@ -1024,3 +1024,46 @@ html[data-script='indic'] .opt-label {
 html[data-script='indic'] .call108-label {
   font-size: 15px;
 }
+
+/* A field with a mic button (speak instead of typing). */
+.dictate-row {
+  position: relative;
+  display: block;
+}
+.dictate-row input {
+  padding-right: 64px;
+}
+.dictate-mic {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--coral-soft);
+  color: var(--coral-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dictate-mic.on {
+  background: var(--coral);
+  color: var(--white);
+  animation: dictate-pulse 1.2s ease-in-out infinite;
+}
+@keyframes dictate-pulse {
+  50% {
+    box-shadow: 0 0 0 8px rgba(241, 92, 62, 0.18);
+  }
+}
+.add-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+}

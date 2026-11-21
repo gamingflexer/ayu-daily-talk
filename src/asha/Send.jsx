@@ -103,13 +103,13 @@ export function AshaSend({ setId }) {
         {n108 > 0 && (
           <span className="a-note-line">
             <span className="dot" data-level="3" aria-hidden="true" />
-            {t('asha.send.levels108', { n: n108 })}
+            {n108 === 1 ? t('asha.send.levels108One') : t('asha.send.levels108', { n: n108 })}
           </span>
         )}
         {nDoc > 0 && (
           <span className="a-note-line">
             <span className="dot" data-level="2" aria-hidden="true" />
-            {t('asha.send.levelsDoctor', { n: nDoc })}
+            {nDoc === 1 ? t('asha.send.levelsDoctorOne') : t('asha.send.levelsDoctor', { n: nDoc })}
           </span>
         )}
         <span className="a-note-line">
@@ -120,8 +120,8 @@ export function AshaSend({ setId }) {
 
       <div className="grow" />
       <div className="dock last">
-        <Btn onClick={approve} disabled={!picked.length}>
-          {t('asha.send.approve', { n: picked.length })}
+        <Btn onClick={approve}>
+          {picked.length ? t('asha.send.approve', { n: picked.length }) : t('asha.send.approveOnly')}
         </Btn>
       </div>
     </Screen>
