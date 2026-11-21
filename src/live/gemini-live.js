@@ -428,6 +428,10 @@ export function createGeminiTalk({ profile, lang = 'en', check = null, intro = n
     stop: () => wrap('stop'),
     setCamera,
     /** She tapped an answer on the card: save it and tell Ayu, who goes on to the next question. */
+    /** What was said so far (for a record when the call is cancelled or fails). */
+    snapshot() {
+      return { turns: turns.map((x) => ({ ...x, text: x.text.replace(/\s+/g, ' ').trim() })), secs, camera: camUsed, answers: state.check ? { ...state.check.answers } : null, signs: recordedSigns(state) };
+    },
     tap(qid, oid, qText, oText) {
       const out = tapAnswer(state, qid, oid);
       if (!out.answer) return;

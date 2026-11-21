@@ -41,6 +41,24 @@ class PcmCapture extends AudioWorkletProcessor {
 registerProcessor('pcm-capture', PcmCapture);
 `;
 
+/** Resume a suspended AudioContext now and on the next touch or key press (until it runs). */
+export function resumeOnTouch(ctx) {
+  const go = () => {
+    if (ctx.state === 'closed') return off();
+    ctx.resume?.().catch(() => {});
+    if (ctx.state === 'running') off();
+  };
+  const evs = ['pointerdown', 'touchend', 'keydown'];
+  const off = () => evs.forEach((e) => document.removeEventListener(e, go, true));
+  go();
+  if (ctx.state !== 'running') evs.forEach((e) => document.addEventListener(e, go, true));
+  ctx.addEventListener?.('statechange', () => {
+    if (ctx.state === 'running' || ctx.state === 'closed') off();
+    // A phone call or another app can suspend it mid-talk: wait for the next touch again.
+    else if (ctx.state === 'suspended' || ctx.state === 'interrupted') evs.forEach((e) => document.addEventListener(e, go, true));
+  });
+}
+
 export const MIC_CONSTRAINTS = { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true };
 
 export function bytesToBase64(buffer) {
@@ -70,6 +88,9 @@ export async function startMic({ targetRate = 16000, onChunk, onLevel, stream: g
       ? given
       : await navigator.mediaDevices.getUserMedia({ audio: MIC_CONSTRAINTS });
   const ctx = new AudioContext();
+  // Created a moment after her tap, phones (iOS Safari above all) can start it suspended:
+  // the mic then sends silence and Ayu cannot be heard. Resume now, and on her next touch.
+  resumeOnTouch(ctx);
   const url = URL.createObjectURL(new Blob([WORKLET], { type: 'application/javascript' }));
   await ctx.audioWorklet.addModule(url);
   URL.revokeObjectURL(url);

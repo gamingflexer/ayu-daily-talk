@@ -43,6 +43,32 @@ function fs(v) {
 
 const LEVELS = ['none', 'watch', 'see_today', 'emergency'];
 
+/** Which kind of phone and browser, coarsely ("Android 14 · Chrome 131"), to find device-specific bugs. */
+export function clientOf(ua = typeof navigator !== 'undefined' ? navigator.userAgent : '') {
+  const os = /Android (\d+)/.exec(ua)
+    ? `Android ${/Android (\d+)/.exec(ua)[1]}`
+    : /(iPhone|iPad).*OS (\d+)/.exec(ua)
+      ? `iOS ${/OS (\d+)/.exec(ua)[1]}`
+      : /Mac OS X/.test(ua)
+        ? 'Mac'
+        : /Windows/.test(ua)
+          ? 'Windows'
+          : /Linux/.test(ua)
+            ? 'Linux'
+            : 'other';
+  const b =
+    (/SamsungBrowser\/(\d+)/.exec(ua) && `Samsung ${/SamsungBrowser\/(\d+)/.exec(ua)[1]}`) ||
+    (/EdgA?\/(\d+)/.exec(ua) && `Edge ${/EdgA?\/(\d+)/.exec(ua)[1]}`) ||
+    (/CriOS\/(\d+)/.exec(ua) && `Chrome iOS ${/CriOS\/(\d+)/.exec(ua)[1]}`) ||
+    (/Firefox\/(\d+)/.exec(ua) && `Firefox ${/Firefox\/(\d+)/.exec(ua)[1]}`) ||
+    (/HeadlessChrome\/(\d+)/.exec(ua) && `Headless ${/HeadlessChrome\/(\d+)/.exec(ua)[1]}`) ||
+    (/Chrome\/(\d+)/.exec(ua) && `Chrome ${/Chrome\/(\d+)/.exec(ua)[1]}`) ||
+    (/Version\/(\d+).*Safari/.exec(ua) && `Safari ${/Version\/(\d+)/.exec(ua)[1]}`) ||
+    'other';
+  const standalone = typeof window !== 'undefined' && window.matchMedia?.('(display-mode: standalone)').matches ? ' · installed' : '';
+  return `${os} · ${b}${standalone}`.slice(0, 60);
+}
+
 /**
  * Build the record. Only these fields leave the phone (the rules allow no others).
  * @param {object} r
@@ -71,6 +97,7 @@ export function researchRecord(r, { device = deviceId(), now = Date.now() } = {}
     endedBy: r.endedBy || null,
     model: r.model || null,
     app: __APP_VERSION__,
+    client: clientOf(),
   };
   return rec;
 }

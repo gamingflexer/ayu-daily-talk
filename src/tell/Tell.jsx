@@ -60,6 +60,7 @@ export function TellScreen({ mode = 'tell' }) {
   const [answers, setAnswers] = useState({}); // check mode
   const runRef = useRef(null); // the last finished call (turns, timings) for the research record
   const startedAtRef = useRef(0);
+  const endedRef = useRef(0);
   const [phase, setPhase] = useState('idle');
   const [micOff, setMicOff] = useState(false);
   const [fail, setFail] = useState(null); // reason
@@ -121,6 +122,7 @@ export function TellScreen({ mode = 'tell' }) {
           if (!camRef.current) toggleCam();
         }
         if (e.status === 'failed') {
+          recordEnd(`fail:${e.reason || 'other'}`);
           setFail(e.reason || 'other');
           stopStream(micRef.current);
           micRef.current = null;
@@ -170,6 +172,7 @@ export function TellScreen({ mode = 'tell' }) {
     const stale = () => id !== sessionRef.current || !aliveRef.current;
     const failed = (reason) => {
       if (stale()) return;
+      recordEnd(`fail:${reason || 'other'}`);
       closeEngine();
       stopCam();
       setFail(reason);
@@ -287,8 +290,16 @@ export function TellScreen({ mode = 'tell' }) {
   /** From a tap: the getUserMedia call happens synchronously inside it (iOS). */
   const tapToSpeak = () => begin(requestMic());
 
+  /** A call that ended without a result (cancelled or failed): keep what was said and why, once per call. */
+  function recordEnd(endedBy) {
+    if (!startedAtRef.current || runRef.current || endedRef.current === startedAtRef.current) return;
+    endedRef.current = startedAtRef.current;
+    const snap = engineRef.current?.snapshot?.() || {};
+    research({ kind: checkMode ? 'call' : 'tell', setId: checkMode ? qset.id : null, answers: checkMode ? snap.answers || answers : null, turns: snap.turns || [], camera: snap.camera, signs: snap.signs || [], level: 'unknown', endedBy: `${endedBy}@${phase}` });
+  }
+
   function cancel() {
-    if (startedAtRef.current && !runRef.current) research({ kind: checkMode ? 'call' : 'tell', setId: checkMode ? qset.id : null, answers: checkMode ? answers : null, level: 'unknown', endedBy: 'cancel' });
+    recordEnd('cancel');
     teardown();
     setCam(null);
     go('/home');
